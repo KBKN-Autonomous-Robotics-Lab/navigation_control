@@ -1,0 +1,11 @@
+# Goal
+bool data
+
+---
+# Result
+bool success
+
+---
+# Feedback
+float32 progress
+
