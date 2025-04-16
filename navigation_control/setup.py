@@ -35,6 +35,8 @@ setup(
         'gps_waypoint = navigation_control.gps_waypoint:main',
         'stop_sign_detection = navigation_control.stop_sign_detection:main',
         'human_realsense = navigation_control.human_realsense:main',
+        'stop_sign = navigation_control.stop_sign:main',
+        'pedestrian = navigation_control.pedestrian:main',
         ],
     },
 )
