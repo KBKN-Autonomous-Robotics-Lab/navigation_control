@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 import cv2
 import numpy as np
 import pyrealsense2 as rs
@@ -9,10 +9,10 @@ from ultralytics import YOLO
 class HumanStopDetector(Node):
     def __init__(self):
         super().__init__('human_stop_detector')
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.status_pub = self.create_publisher(String, '/human_status', 10)
 
         # YOLOモデルの読み込み
-        self.model = YOLO('yolov8n.pt')  # person 検出
+        self.model = YOLO('yolov8x.pt')
 
         # RealSense初期化
         self.pipeline = rs.pipeline()
@@ -35,7 +35,7 @@ class HumanStopDetector(Node):
         color_image = np.asanyarray(color_frame.get_data())
         results = self.model(color_image)[0]
 
-        stop = False
+        detected = False
 
         for result in results.boxes:
             cls_id = int(result.cls)
@@ -47,16 +47,13 @@ class HumanStopDetector(Node):
             distance = depth_frame.get_distance(cx, cy)
 
             if 0 < distance < 1.5:
-                stop = True
-                self.get_logger().info(f"人を検出！距離: {distance:.2f}m → 停止")
-                break  # 一人でも近ければ止める
+                detected = True
+                self.get_logger().info(f"人を検出: {distance:.2f}m")
+                break
 
-        msg = Twist()
-        if stop:
-            msg.linear.x = 0.0
-        else:
-            msg.linear.x = 0.2  # 任意の速度
-        self.cmd_vel_pub.publish(msg)
+        msg = String()
+        msg.data = "DETECTED" if detected else "CLEAR"
+        self.status_pub.publish(msg)
 
     def destroy_node(self):
         self.pipeline.stop()
