@@ -37,6 +37,8 @@ setup(
         'human_realsense = navigation_control.human_realsense:main',
         'stop_sign = navigation_control.stop_sign:main',
         'pedestrian = navigation_control.pedestrian:main',
+        'stop_sign_control = navigation_control.stop_sign_control:main',
+        'human_control = navigation_control.human_control:main',
         ],
     },
 )
