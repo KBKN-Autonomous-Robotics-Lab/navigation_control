@@ -13,7 +13,7 @@ class MJPGCameraPublisher(Node):
     def __init__(self):
         super().__init__('camera_publisher')
         self.publisher_ = self.create_publisher(Image, 'image_raw', 10)
-        self.cap = cv2.VideoCapture('/dev/webcam2')
+        self.cap = cv2.VideoCapture('/dev/sensors/webcam')
         self.bridge = CvBridge()
         self.timer = self.create_timer(0.1, self.timer_callback)
         
@@ -28,7 +28,7 @@ class MJPGCameraPublisher(Node):
         
         # 初期値の設定
         self.traffic_action = False # traffic_actionするかの変数
-        self.traffic_flag = 0
+        self.traffic_flag = 1
         self.stop = True
 
         # MJPG フォーマットの設定
