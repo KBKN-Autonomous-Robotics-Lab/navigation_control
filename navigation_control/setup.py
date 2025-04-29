@@ -40,6 +40,9 @@ setup(
         'stop_sign_control = navigation_control.stop_sign_control:main',
         'human_control = navigation_control.human_control:main',
         'pothole_detection = navigation_control.pothole_detection:main',
+        'tire = navigation_control.tire:main',
+        'tire_detection = navigation_control.tire_detection:main',
+        'tire_control = navigation_control.tire_control:main',
         ],
     },
 )
