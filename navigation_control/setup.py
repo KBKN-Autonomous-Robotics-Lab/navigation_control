@@ -38,6 +38,7 @@ setup(
         'stop_sign = navigation_control.stop_sign:main',
         'pedestrian = navigation_control.pedestrian:main',
         'stop_sign_control = navigation_control.stop_sign_control:main',
+        'human_detection = navigation_control.human_detection:main',
         'human_control = navigation_control.human_control:main',
         'pothole_detection = navigation_control.pothole_detection:main',
         'tire = navigation_control.tire:main',

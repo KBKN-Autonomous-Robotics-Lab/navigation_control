@@ -12,7 +12,7 @@ from my_msgs.action import StopFlag
 class MJPGCameraPublisher(Node):
     def __init__(self):
         super().__init__('camera_publisher')
-        self.publisher_ = self.create_publisher(Image, 'image_raw', 10)
+        self.publisher_ = self.create_publisher(Image, 'image_raw', 1)
         self.cap = cv2.VideoCapture('/dev/sensors/webcam')
         self.bridge = CvBridge()
         self.timer = self.create_timer(0.1, self.timer_callback)
