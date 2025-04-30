@@ -14,7 +14,7 @@ class YoloV8StopSignNode(Node):
             Image,
             '/image_raw',  # カメラ画像のトピックに合わせて変更
             self.image_callback,
-            10)
+            1)
     
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')

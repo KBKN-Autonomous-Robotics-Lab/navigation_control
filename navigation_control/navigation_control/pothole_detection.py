@@ -14,7 +14,7 @@ class PotholeDetector(Node):
             Image,
             '/image_raw',
             self.listener_callback,
-            10)
+            1)
         self.bridge = CvBridge()
 
     def listener_callback(self, msg):
