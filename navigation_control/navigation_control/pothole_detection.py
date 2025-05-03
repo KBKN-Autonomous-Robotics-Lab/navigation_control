@@ -66,8 +66,8 @@ class PotholeDetector(Node):
                 self.get_logger().info(f"Pothole detected at pixel coordinates: ({int(cx)}, {int(cy)})")
                 # ピクセル → 座標変換
                 img_h, img_w = frame.shape[:2]
-                x = 1.9 + (img_h - cy) * 0.1  # 下から上へ
-                y = (cx - img_w / 2) * 0.1  # 中心から左右へ
+                x = 1.9 + (img_h - cy) * 0.001  # 下から上へ
+                y = (cx + img_w / 2) * 0.001  # 中心から左右へ
                 z = 0.0
 
                 # PointCloud2 用データ生成
