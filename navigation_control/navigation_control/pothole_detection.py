@@ -4,6 +4,9 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
+from sensor_msgs.msg import PointCloud2, PointField
+from std_msgs.msg import Header
+import struct
 
 
 class PotholeDetector(Node):
@@ -15,7 +18,9 @@ class PotholeDetector(Node):
             '/image_raw',
             self.listener_callback,
             1)
+        self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 10)
         self.bridge = CvBridge()
+        self.detected_points = []
 
     def listener_callback(self, msg):
         # Convert ROS image to OpenCV image
@@ -55,8 +60,45 @@ class PotholeDetector(Node):
             if 1.5 < aspect_ratio < 5.0 and cy > frame.shape[0] * 0.8:
                 cv2.ellipse(frame, ellipse, (0, 255, 0), 2)
                 cv2.putText(frame, f"{aspect_ratio:.2f}", (int(cx), int(cy)), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+    
+            # ピクセル座標を出力
+            self.get_logger().info(f"Pothole detected at pixel coordinates: ({int(cx)}, {int(cy)})")
+            # ピクセル → 座標変換
+            img_h, img_w = frame.shape[:2]
+            x = (img_h - cy) * 0.1  # 下から上へ
+            y = (cx - img_w // 2) * 0.1  # 中心から左右へ
+            z = 0.0
 
+            # PointCloud2 用データ生成
+            self.detected_points.append((x,y,z))
+            points = self.detected_points
+
+            # PointCloud2 メッセージ作成
+            fields = [
+                PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+                PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+                PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+            ]
+
+            header = Header()
+            header.stamp = self.get_clock().now().to_msg()
+            header.frame_id = 'odom'
+
+            pc_data = b''.join([struct.pack('fff', *pt) for pt in points])
+
+            pc_msg = PointCloud2()
+            pc_msg.header = header
+            pc_msg.height = 1
+            pc_msg.width = len(points)
+            pc_msg.fields = fields
+            pc_msg.is_bigendian = False
+            pc_msg.point_step = 12
+            pc_msg.row_step = pc_msg.point_step * pc_msg.width
+            pc_msg.is_dense = True
+            pc_msg.data = pc_data
+
+            self.pc_publisher.publish(pc_msg)
         """
         for cnt in contours:
             area = cv2.contourArea(cnt)
