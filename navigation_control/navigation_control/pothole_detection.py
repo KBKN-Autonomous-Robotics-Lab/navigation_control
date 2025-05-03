@@ -64,14 +64,26 @@ class PotholeDetector(Node):
     
                 # ピクセル座標を出力
                 self.get_logger().info(f"Pothole detected at pixel coordinates: ({int(cx)}, {int(cy)})")
+                
                 # ピクセル → 座標変換
                 img_h, img_w = frame.shape[:2]
-                x = 1.9 + (img_h - cy) * 0.001  # 下から上へ
-                y = (cx + img_w / 2) * 0.001  # 中心から左右へ
-                z = 0.0
+                points = []
+                
+                points_list = cv2.ellipse2Poly((int(cx), int(cy)), (int(major/2), int(minor/2)), int(angle), 0, 360, 10)
+                for px, py in points_list:
+                    x = 1.9 + (img_h - py) * 0.001
+                    y = - (px - img_w / 2) * 0.001
+                    z = 0.0
+                    points.append((x, y, z))
+                
+                # ピクセル → 座標変換
+                #img_h, img_w = frame.shape[:2]
+                #x = 1.9 + (img_h - cy) * 0.001  # 下から上へ
+                #y = (cx + img_w / 2) * 0.001  # 中心から左右へ
+                #z = 0.0
 
                 # PointCloud2 用データ生成
-                points = [(x, y, z)] 
+                #points = [(x, y, z)] 
 
                 # PointCloud2 メッセージ作成
                 fields = [
