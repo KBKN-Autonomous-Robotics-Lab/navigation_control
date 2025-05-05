@@ -7,7 +7,8 @@ import numpy as np
 from sensor_msgs.msg import PointCloud2, PointField
 from std_msgs.msg import Header
 import struct
-
+from nav_msgs.msg import Odometry
+from collections import deque
 
 class PotholeDetector(Node):
 
@@ -18,10 +19,23 @@ class PotholeDetector(Node):
             '/image_raw',
             self.listener_callback,
             1)
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/fusion_odom',
+            self.odom_callback,
+            10)
         self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 10)
         self.bridge = CvBridge()
         self.detected_points = []
-
+        self.current_position = None
+    
+    def odom_callback(self, msg):
+        self.current_position = (
+            msg.pose.pose.position.x,
+            msg.pose.pose.position.y,
+            msg.pose.pose.position.z)
+        
+        
     def listener_callback(self, msg):
         # Convert ROS image to OpenCV image
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -76,6 +90,22 @@ class PotholeDetector(Node):
                     z = 0.0
                     points.append((x, y, z))
                 
+                if self.current_position is None:
+                    return
+                
+                robot_x, robot_y, robot_z = self.current_position
+                filtered_points = []
+                for x, y, z in points:
+                    dx = x - robot_x
+                    dy = y - robot_y
+                    dz = z - robot_z
+                    distance = (dx**2 + dy**2 + dz**2) **0.5
+                    if distance <= 10.0:
+                        filtered_points.append((x,y,z))
+               
+                if not filtered_points:
+                    return
+                
                 # ピクセル → 座標変換
                 #img_h, img_w = frame.shape[:2]
                 #x = 1.9 + (img_h - cy) * 0.001  # 下から上へ
@@ -96,12 +126,12 @@ class PotholeDetector(Node):
                 header.stamp = self.get_clock().now().to_msg()
                 header.frame_id = 'odom'
 
-                pc_data = b''.join([struct.pack('fff', *pt) for pt in points])
+                pc_data = b''.join([struct.pack('fff', *pt) for pt in filtered_points])
 
                 pc_msg = PointCloud2()
                 pc_msg.header = header
                 pc_msg.height = 1
-                pc_msg.width = len(points)
+                pc_msg.width = len(filtered_points)
                 pc_msg.fields = fields
                 pc_msg.is_bigendian = False
                 pc_msg.point_step = 12
