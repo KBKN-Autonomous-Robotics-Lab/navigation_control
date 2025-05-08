@@ -100,7 +100,28 @@ class PotholeDetector(Node):
             all_points.extend(points)
 
         if not all_points:
-            return  # データなし
+            # 空の PointCloud2 を publish
+            header = Header()
+            header.stamp = now.to_msg()
+            header.frame_id = 'odom'
+
+            pc_msg = PointCloud2()
+            pc_msg.header = header
+            pc_msg.height = 1
+            pc_msg.width = 0
+            pc_msg.fields = [
+                PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+                PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+                PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+            ]
+            pc_msg.is_bigendian = False
+            pc_msg.point_step = 12
+            pc_msg.row_step = 0
+            pc_msg.is_dense = True
+            pc_msg.data = b''
+
+            self.pc_publisher.publish(pc_msg)
+            return
 
         # PointCloud2 フィールド定義
         fields = [
