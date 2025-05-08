@@ -10,14 +10,20 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(example_interfaces REQUIRED)
 
 set(action_files
   "action/StopFlag.action"
 )
+
+set(srv_files
+  "srv/Avglatlon.srv"
+)
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${action_files}
+  ${srv_files}
 )
 
 if(BUILD_TESTING)

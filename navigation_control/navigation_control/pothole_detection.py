@@ -7,8 +7,8 @@ import numpy as np
 from sensor_msgs.msg import PointCloud2, PointField
 from std_msgs.msg import Header
 import struct
-from nav_msgs.msg import Odometry
 from collections import deque
+
 
 class PotholeDetector(Node):
 
@@ -19,30 +19,19 @@ class PotholeDetector(Node):
             '/image_raw',
             self.listener_callback,
             1)
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            '/fusion_odom',
-            self.odom_callback,
-            10)
-        self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 10)
+        self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 1)
         self.bridge = CvBridge()
         self.detected_points = []
-        self.current_position = None
-    
-    def odom_callback(self, msg):
-        self.current_position = (
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.pose.pose.position.z)
-        
-        
+        self.points_buffer = deque()
+        self.publish_timer = self.create_timer(0.1, self.publish_accumulated_pointcloud)
+        self.lifetime_sec = 20.0  # 20秒保持
+
     def listener_callback(self, msg):
         # Convert ROS image to OpenCV image
         frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
         # Preprocessing
         blur = cv2.GaussianBlur(frame, (5, 5), 0)
-        #hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
 
         # White color mask
         lower_white = np.array([200, 200, 200])
@@ -56,13 +45,11 @@ class PotholeDetector(Node):
 
         # Contour detection
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        now = self.get_clock().now()
+        all_points = []  # 一時的な points 保存用
 
         for cnt in contours:
-            #area = cv2.contourArea(cnt)
-            #if area < 100:
-            #    continue
-
-            if len(cnt) < 5 or cv2.contourArea(cnt) < 200:  
+            if len(cnt) < 5 or cv2.contourArea(cnt) < 200:
                 continue
             
             ellipse = cv2.fitEllipse(cnt)
@@ -90,75 +77,56 @@ class PotholeDetector(Node):
                     z = 0.0
                     points.append((x, y, z))
                 
-                if self.current_position is None:
-                    return
-                
-                robot_x, robot_y, robot_z = self.current_position
-                filtered_points = []
-                for x, y, z in points:
-                    dx = x - robot_x
-                    dy = y - robot_y
-                    dz = z - robot_z
-                    distance = (dx**2 + dy**2 + dz**2) **0.5
-                    if distance <= 10.0:
-                        filtered_points.append((x,y,z))
-               
-                if not filtered_points:
-                    return
-                
-                # ピクセル → 座標変換
-                #img_h, img_w = frame.shape[:2]
-                #x = 1.9 + (img_h - cy) * 0.001  # 下から上へ
-                #y = (cx + img_w / 2) * 0.001  # 中心から左右へ
-                #z = 0.0
+                # 一時的に points を保存
+                all_points.extend(points)
 
-                # PointCloud2 用データ生成
-                #points = [(x, y, z)] 
-
-                # PointCloud2 メッセージ作成
-                fields = [
-                    PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-                    PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-                    PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
-                ]
-
-                header = Header()
-                header.stamp = self.get_clock().now().to_msg()
-                header.frame_id = 'odom'
-
-                pc_data = b''.join([struct.pack('fff', *pt) for pt in filtered_points])
-
-                pc_msg = PointCloud2()
-                pc_msg.header = header
-                pc_msg.height = 1
-                pc_msg.width = len(filtered_points)
-                pc_msg.fields = fields
-                pc_msg.is_bigendian = False
-                pc_msg.point_step = 12
-                pc_msg.row_step = pc_msg.point_step * pc_msg.width
-                pc_msg.is_dense = True
-                pc_msg.data = pc_data
-
-                self.pc_publisher.publish(pc_msg)
-        """
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area < 100:
-                continue
-
-            perimeter = cv2.arcLength(cnt, True)
-            if perimeter == 0:
-                continue
-
-            circularity = 4 * np.pi * (area / (perimeter ** 2))
-            if circularity > 0.7:
-                x, y, w, h = cv2.boundingRect(cnt)
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        """
+        if all_points:
+            self.points_buffer.append((now, all_points))  # タイムスタンプ付きで保存
 
         # Show result (for debugging)
-        cv2.imshow("Detected Circles", frame)
+        cv2.imshow("Detected Potholes", frame)
         cv2.waitKey(1)
+
+    def publish_accumulated_pointcloud(self):
+        now = self.get_clock().now()
+
+        # 20秒より古いものを削除
+        while self.points_buffer and (now - self.points_buffer[0][0]).nanoseconds / 1e9 > self.lifetime_sec:
+            self.points_buffer.popleft()
+
+        # 残っているすべてのポイントを結合
+        all_points = []
+        for _, points in self.points_buffer:
+            all_points.extend(points)
+
+        if not all_points:
+            return  # データなし
+
+        # PointCloud2 フィールド定義
+        fields = [
+            PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+        ]
+
+        header = Header()
+        header.stamp = now.to_msg()
+        header.frame_id = 'odom'
+
+        pc_data = b''.join([struct.pack('fff', *pt) for pt in all_points])
+
+        pc_msg = PointCloud2()
+        pc_msg.header = header
+        pc_msg.height = 1
+        pc_msg.width = len(all_points)
+        pc_msg.fields = fields
+        pc_msg.is_bigendian = False
+        pc_msg.point_step = 12
+        pc_msg.row_step = pc_msg.point_step * pc_msg.width
+        pc_msg.is_dense = True
+        pc_msg.data = pc_data
+
+        self.pc_publisher.publish(pc_msg)
 
 
 def main(args=None):

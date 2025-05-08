@@ -17,11 +17,13 @@ import sensor_msgs.msg as sensor_msgs
 import yaml
 import os
 import queue
+from orange_gnss.get_lonlat_movingbase_quat_ttyUSB import GPSData
+from my_msgs.srv import Avglatlon
 
 class GPSAverageNode(Node):
     def __init__(self):
         super().__init__('gps_average_node')
-        self.subscription = self.create_subscription(NavSatFix, '/fix', self.gps_callback, 10)
+        #self.subscription = self.create_subscription(NavSatFix, '/fix', self.gps_callback, 10)
         self.movingase_sub = self.create_subscription(Imu, "movingbase/quat", self.movingbase_callback, 1)
 
         self.data = []
@@ -33,6 +35,9 @@ class GPSAverageNode(Node):
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
         
+        # service
+        self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
+        
         # define waypoints
         self.ref_points = [
             (35.42578984, 139.3138073), # waypoint 1
@@ -43,13 +48,14 @@ class GPSAverageNode(Node):
             (35.42589533, 139.3139987), # waypoint 3
             (35.42596721, 139.3139898), # waypoint 4
             (35.42596884, 139.3139395) # waypoint 3
-        ]
-
-        # Tkinter UI
+        ]        
+        self.first_point = np.array([[0.0, 0.0, 0.0],
+                                    [5.0, 0.0, 0.0],
+                                    [10.0, 0.0, 0.0]])  # 開始点など                        
+        self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
+        
+        # Tkinter
         self.root = tk.Tk()
-        self.root.title("GPS Data Collection")
-        self.button = tk.Button(self.root, text="Start Collection", command=self.start_collection)
-        self.button.pack()
         self.root.bind("<Key>", self.key_input_handler)
         self.reversed_flag = False  # bが入力されたかどうかを記録
         
@@ -69,6 +75,7 @@ class GPSAverageNode(Node):
             self.count = 1
     
     # copy lonlat_to_odom function 
+    '''
     def conversion(self, avg_lat, avg_lon, theta):
         #ido = self.ref_points[0]
         #keido = self.ref_points[1]
@@ -141,62 +148,38 @@ class GPSAverageNode(Node):
             points.append(point)
 
         return points
+     '''
+            
+    def receive_avg_gps_callback(self, request, response):
+        avg_lat = request.avg_lat
+        avg_lon = request.avg_lon
 
-    def start_collection(self):
-        if not self.is_collecting:
-            self.get_logger().info("ボタンが押されました。GPSデータ収集開始。")
-            self.data = []
-            self.start_time = time.time()
-            self.is_collecting = True
+        self.get_logger().info(f"サービス受信: 平均緯度={avg_lat}, 経度={avg_lon}")
 
-    def gps_callback(self, msg):
-        if self.is_collecting:
-            elapsed_time = time.time() - self.start_time
-            if elapsed_time <= 10.0:
-                self.data.append((msg.latitude, msg.longitude))
-                self.get_logger().info(f'受信: 緯度={msg.latitude}, 経度={msg.longitude}')
-            else:
-                self.calculate_average()
+        if self.theta is None:
+            self.get_logger().warn("GPSからのthetaがまだ取得されていません。")
+            response.success = False
+            return response
 
-    def calculate_average(self):
-        if self.data:
-            avg_lat = sum(lat for lat, lon in self.data) / len(self.data)
-            avg_lon = sum(lon for lat, lon in self.data) / len(self.data)
+        GPSxy = GPSData.conversion(avg_lat, avg_lon, self.theta)
+        #GPSxy = self.conversion(avg_lat, avg_lon, self.theta)
 
-            self.get_logger().info(f'10秒間の平均値: 緯度={avg_lat}, 経度={avg_lon}')
-            
-            GPSxy = self.conversion(avg_lat, avg_lon, self.theta)
-            
-            #waypoints_list = []
-            #waypoints_list.append(GPSxy)           
-            #self.waypoints = np.array(waypoints_list).T  # 形状を [3, N] に変換
-            
-            # ここで前後に追加したいXY座標を定義
-            first_point = np.array([[0.0, 0.0, 0.0],
-                                    [5.0, 0.0, 0.0],
-                                    [10.0, 0.0, 0.0]])  # 開始点など
-            last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
-            
-            # prepend/append の設定（反転フラグに応じて）
-            if self.reversed_flag:
-                first_point[:, 1] *= -1
-                last_point[:, 1] *= -1
-            #else:
-            #    first_point = np.array([[0.0, 0.0, 0.0]])
-            #    last_point = np.array([[5.0, 5.0, 0.0]])           
-            
-            # export numpy
-            gps_np = np.array(GPSxy)
-            
-            # connect waypoints
-            full_waypoints = np.concatenate([first_point, gps_np, last_point], axis=0)
-            
-            self.waypoints.put(full_waypoints.T)
+        gps_np = np.array(GPSxy)
 
-            self.is_collecting = False  
+        first_point = self.first_point
+        last_point = self.last_point
 
-            # 計算が終わったら WaypointManager を起動
-            self.launch_waypoint_manager()
+        if self.reversed_flag:
+            first_point[:, 1] *= -1
+            last_point[:, 1] *= -1
+
+        full_waypoints = np.concatenate([first_point, gps_np, last_point], axis=0)
+        self.waypoints.put(full_waypoints.T)
+
+        self.launch_waypoint_manager()
+
+        response.success = True
+        return response
 
             
     def launch_waypoint_manager(self):
