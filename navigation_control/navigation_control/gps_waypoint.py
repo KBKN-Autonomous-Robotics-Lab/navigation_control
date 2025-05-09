@@ -24,13 +24,13 @@ class GPSAverageNode(Node):
     def __init__(self):
         super().__init__('gps_average_node')
         #self.subscription = self.create_subscription(NavSatFix, '/fix', self.gps_callback, 10)
-        self.movingase_sub = self.create_subscription(Imu, "movingbase/quat", self.movingbase_callback, 1)
+        #self.movingase_sub = self.create_subscription(Imu, "movingbase/quat", self.movingbase_callback, 1)
 
         self.data = []
         self.start_time = None
         self.is_collecting = False
         self.waypoints = queue.Queue()  
-        self.theta = None
+        #self.theta = None
         self.count = 0
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
@@ -75,7 +75,7 @@ class GPSAverageNode(Node):
             self.count = 1
     
     # copy lonlat_to_odom function 
-    '''
+    
     def conversion(self, avg_lat, avg_lon, theta):
         #ido = self.ref_points[0]
         #keido = self.ref_points[1]
@@ -141,28 +141,29 @@ class GPSAverageNode(Node):
             r_theta = theta * degree_to_radian
             h_x = math.cos(r_theta) * gps_x - math.sin(r_theta) * gps_y
             h_y = math.sin(r_theta) * gps_x + math.cos(r_theta) * gps_y
-            point = np.array([h_y, -h_x, 0.0])
-            #point = np.array([-h_y, h_x, 0.0])
+            #point = np.array([h_y, -h_x, 0.0])
+            point = np.array([-h_y, h_x, 0.0])
             # point = (h_y, -h_x)
             self.get_logger().info(f"point: {point}")         
             points.append(point)
 
         return points
-     '''
+     
             
     def receive_avg_gps_callback(self, request, response):
         avg_lat = request.avg_lat
         avg_lon = request.avg_lon
+        theta = request.theta
 
         self.get_logger().info(f"サービス受信: 平均緯度={avg_lat}, 経度={avg_lon}")
 
-        if self.theta is None:
+        if theta is None:
             self.get_logger().warn("GPSからのthetaがまだ取得されていません。")
             response.success = False
             return response
 
-        GPSxy = GPSData.conversion(avg_lat, avg_lon, self.theta)
-        #GPSxy = self.conversion(avg_lat, avg_lon, self.theta)
+        #GPSxy = GPSData.conversion(avg_lat, avg_lon, theta)
+        GPSxy = self.conversion(avg_lat, avg_lon, theta)
 
         gps_np = np.array(GPSxy)
 
@@ -220,7 +221,7 @@ class WaypointManager(Node):
         )
         
         # Subscriptionを作成。
-        self.subscription = self.create_subscription(nav_msgs.Odometry,'/odom_wheel', self.get_odom, qos_profile_sub)
+        self.subscription = self.create_subscription(nav_msgs.Odometry,'/fusion/odom', self.get_odom, qos_profile_sub)
         self.subscription  # 警告を回避するために設置されているだけです。削除しても挙動はかわりません。
         
         # タイマーを0.1秒（100ミリ秒）ごとに呼び出す
