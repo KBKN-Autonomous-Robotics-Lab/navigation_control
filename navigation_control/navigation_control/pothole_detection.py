@@ -54,11 +54,20 @@ class PotholeDetector(Node):
             
             ellipse = cv2.fitEllipse(cnt)
             (cx, cy), (major, minor), angle = ellipse
-
+            
+            # アスペクト比 (縦長除去用)
             aspect_ratio = max(major, minor) / min(major, minor)
 
+            # 横長楕円かを判定する: majorが横方向、minorが縦方向であることを確認
+            is_horizontal = major > minor and (angle < 30 or angle > 150)  # 角度0°または180°が完全な横
+
+            # 画面下部 + 横長 + 適切なアスペクト比
+            if is_horizontal and 1.5 < aspect_ratio < 5.0 and cy > frame.shape[0] * 0.8:
+
+            #aspect_ratio = max(major, minor) / min(major, minor)
+
             # カメラの角度・高さに合わせて範囲調整（例: 1.5〜3.0）
-            if 1.5 < aspect_ratio < 5.0 and cy > frame.shape[0] * 0.8:
+            #if 1.5 < aspect_ratio < 5.0 and cy > frame.shape[0] * 0.8:
                 cv2.ellipse(frame, ellipse, (0, 255, 0), 2)
                 cv2.putText(frame, f"{aspect_ratio:.2f}", (int(cx), int(cy)), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
