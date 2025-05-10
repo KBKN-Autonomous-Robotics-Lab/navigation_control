@@ -1,0 +1,5 @@
+float64 avg_lat
+float64 avg_lon
+float64 theta
+---
+bool success

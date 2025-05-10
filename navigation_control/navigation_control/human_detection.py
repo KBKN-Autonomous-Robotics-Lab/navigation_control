@@ -28,7 +28,7 @@ class HumanDetection(Node):
         # ROS Imageメッセージ -> OpenCV画像
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
-        # タイヤ検出
+        # human detect
         status, human_img = self.detect_human(cv_image)
         
         self.publisher.publish(String(data=status))
@@ -54,13 +54,17 @@ class HumanDetection(Node):
             for box in result.boxes:
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                w = x2 - x1
+                h = y2 - y1
 
-                if cls_id == 0 and conf >=0.5:  # human class ID
-                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                # size and priority
+                if cls_id == 0 and conf >= 0.5 and (w > 50 or h > 50): # width , height -> pixel
                     cropped_img = result.orig_img[y1:y2, x1:x2]
                     return cropped_img
-        return None
 
+        return None
+        
 def main(args=None):
     rclpy.init(args=args)
     human_detector = HumanDetection()
