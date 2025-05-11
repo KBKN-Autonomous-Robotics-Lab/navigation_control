@@ -7,6 +7,7 @@ import yaml
 from my_msgs.action import StopFlag  # Actionメッセージのインポート
 import tkinter as tk
 import threading
+from std_msgs.msg import Bool
 
 class WaypointMonitor(Node):
     def __init__(self):
@@ -14,6 +15,11 @@ class WaypointMonitor(Node):
         self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClientの設定
         self.action_sent = False  # アクションが送信されたかを追跡
         self.stop = False # stopするかの変数(True=stop, False=go)
+        self.nav_state = False
+        
+        # publish /nav_state
+        self.nav_state_publisher = self.create_publisher(Bool, '/nav_state', 10)
+        self.create_timer(1, self.publish_nav_state)
         
         # Tkinterウィンドウとボタンの設定
         self.root = tk.Tk()
@@ -61,10 +67,17 @@ class WaypointMonitor(Node):
         result = future.result().result
         self.get_logger().info(f"Result: {result.sum}")
 
+    def publish_nav_state(self):
+        # /nav_state publish
+        msg = Bool()
+        msg.data = self.nav_state
+        self.nav_state_publisher.publish(msg)
+        
     def resume_action(self):
         # ボタンを押したときにstopをFalseにしてアクションを再送信
         self.stop = False
         self.get_logger().info("Stop flag reset to False")
+        self.nav_state = True
         self.send_action_request()
 
     def run(self):
