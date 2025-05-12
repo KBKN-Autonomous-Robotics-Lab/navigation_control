@@ -9,7 +9,7 @@ class YoloV8TireNode(Node):
     def __init__(self):
         super().__init__('yolov8_tire_node')
         self.bridge = CvBridge()
-        self.model = YOLO('last.pt')  # 小さいモデルでOK（COCO学習済み）
+        self.model = YOLO('yolov8x-oiv7.pt')  # 小さいモデルでOK（COCO学習済み）
         self.subscription = self.create_subscription(
             Image,
             '/image_raw',  # カメラ画像のトピックに合わせて変更
@@ -24,9 +24,9 @@ class YoloV8TireNode(Node):
             for box in result.boxes:
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
-                if cls_id == 0 and conf >=0.5:  # tire class ID
+                if cls_id == 536 and conf >=0.5:  # tire class ID
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
-                    label = f"tire {conf:.2f}"
+                    label = f"tre {conf:.2f}"
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
                     cv2.putText(frame, label, (x1, y1 - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
