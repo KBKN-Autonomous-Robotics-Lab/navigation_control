@@ -59,7 +59,7 @@ class HumanDetection(Node):
                 h = y2 - y1
 
                 # size and priority
-                if cls_id == 0 and conf >= 0.5 and (w > 50 or h > 50): # width , height -> pixel
+                if cls_id == 0 and conf >= 0.5 and (w > 50 or h > 230): # width , height -> pixel
                     cropped_img = result.orig_img[y1:y2, x1:x2]
                     return cropped_img
 
