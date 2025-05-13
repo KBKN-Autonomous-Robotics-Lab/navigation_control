@@ -40,18 +40,22 @@ class GPSAverageNode(Node):
         
         # define waypoints
         self.ref_points = [
-            (35.42578984, 139.3138073), # waypoint 1
-            (35.42580947, 139.3138761), # waypoint 2
-            (35.42582577, 139.3139183), # waypoint 3
-            (35.42584276, 139.3139622), # waypoint 1
-            (35.42585746, 139.3139984), # waypoint 2
-            (35.42589533, 139.3139987), # waypoint 3
-            (35.42596721, 139.3139898), # waypoint 4
-            (35.42596884, 139.3139395) # waypoint 3
+            #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
+            #(35.42580947, 139.3138761), # waypoint 2
+            #(35.42582577, 139.3139183), # waypoint 3
+            #(35.42584276, 139.3139622), # waypoint 1
+            #(35.42585746, 139.3139984), # waypoint 2
+            #(35.42589533, 139.3139987), # waypoint 3
+            #(35.42596721, 139.3139898), # waypoint 4
+            #(35.42596884, 139.3139395) # waypoint 3 nakaniwakokomade
+            (35.4265706, 139.3141858), # waypoint 1 asupharuto
+            (35.4266018, 139.3141984), # waypoint 2
+            (35.4266132, 139.314226), # waypoint 3
+            (35.4266162, 139.3142614) # waypoint 4
         ]        
         self.first_point = np.array([[0.0, 0.0, 0.0],
-                                    [5.0, 0.0, 0.0],
-                                    [10.0, 0.0, 0.0]])  # 開始点など                        
+                                    #[5.0, 0.0, 0.0],
+                                    [0.0, 0.0, 0.0]])  # 開始点など                        
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
         
         # Tkinter
@@ -263,9 +267,9 @@ class WaypointManager(Node):
         
         #set judge dist
         if abs(waypoint_theta) > 90:
-            determine_dist = 8
+            determine_dist = 4.5
         else:
-            determine_dist = 3
+            determine_dist = 4.5
         #check if the waypoint reached
         if waypoint_dist < determine_dist:
             self.current_waypoint += 1
