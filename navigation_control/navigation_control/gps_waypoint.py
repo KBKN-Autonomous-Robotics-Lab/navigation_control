@@ -68,19 +68,25 @@ class GPSWaypointManager(Node):
         self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
 
         self.ref_points = [
-            (35.42578984, 139.3138073), # nakaniwa hajime
-            (35.42580947, 139.3138761),
-            (35.42582577, 139.3139183),
-            (35.42584276, 139.3139622),
-            (35.42585746, 139.3139984),
-            (35.42589533, 139.3139987),
-            (35.42596721, 139.3139898),
-            (35.42596884, 139.3139395) # nakaniwa owari
-        ]
-
-        self.first_point = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
-        self.last_point = np.array([[0.0, 0.0, 0.0]])
-
+            #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
+            #(35.42580947, 139.3138761), # waypoint 2
+            #(35.42582577, 139.3139183), # waypoint 3
+            #(35.42584276, 139.3139622), # waypoint 1
+            #(35.42585746, 139.3139984), # waypoint 2
+            #(35.42589533, 139.3139987), # waypoint 3
+            #(35.42596721, 139.3139898), # waypoint 4
+            #(35.42596884, 139.3139395) # waypoint 3 nakaniwakokomade
+            (35.4265706, 139.3141858), # waypoint 1 asupharuto
+            (35.4266018, 139.3141984), # waypoint 2
+            (35.4266132, 139.314226), # waypoint 3
+            (35.4266162, 139.3142614) # waypoint 4
+        ]        
+        self.first_point = np.array([[0.0, 0.0, 0.0],
+                                    #[5.0, 0.0, 0.0],
+                                    [0.0, 0.0, 0.0]])  # 開始点など                        
+        self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
+        
+        # Tkinter
         self.root = tk.Tk()
         self.root.bind("<Key>", self.key_input_handler)
         self.reversed_flag = False
