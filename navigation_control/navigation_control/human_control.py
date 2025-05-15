@@ -35,8 +35,9 @@ class HumanControl(Node):
             self.get_logger().info("human detected")
             self.stop = True
             #self.traffic_action = True
+            self.send_action_request()
             # 1秒後にアクションを送信
-            self.create_timer(1.0, self.delayed_action_send, callback_group=None)
+            #self.create_timer(1.0, self.delayed_action_send, callback_group=None)
         # 状態の更新
         self.previous_status = msg.data
         
