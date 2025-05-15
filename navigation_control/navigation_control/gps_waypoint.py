@@ -273,8 +273,8 @@ class GPSWaypointManager(Node):
             r_theta = theta * degree_to_radian
             h_x = math.cos(r_theta) * gps_x - math.sin(r_theta) * gps_y
             h_y = math.sin(r_theta) * gps_x + math.cos(r_theta) * gps_y
-            #point = np.array([h_y, -h_x, 0.0])
-            point = np.array([-h_y, h_x, 0.0])
+            point = np.array([h_y, -h_x, 0.0])
+            #point = np.array([-h_y, h_x, 0.0])
             # point = (h_y, -h_x)
             self.get_logger().info(f"point: {point}")         
             points.append(point)
