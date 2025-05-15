@@ -38,6 +38,13 @@ class HumanControl(Node):
             self.send_action_request()
             # 1秒後にアクションを送信
             #self.create_timer(1.0, self.delayed_action_send, callback_group=None)
+        if msg.data == "Go" and self.previous_status == "Stop":
+            self.get_logger().info("Not human detected")
+            self.stop = False
+            #self.traffic_action = True
+            self.send_action_request()
+            # 1秒後にアクションを送信
+            #self.create_timer(1.0, self.delayed_action_send, callback_group=None)
         # 状態の更新
         self.previous_status = msg.data
         
