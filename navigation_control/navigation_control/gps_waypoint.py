@@ -12,6 +12,8 @@ from my_msgs.srv import Avglatlon
 from geometry_msgs.msg import PoseStamped
 import threading
 from rclpy.time import Time
+from rclpy.action import ActionClient
+from my_msgs.action import StopFlag  # Actionメッセージのインポート
 
 
 def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
@@ -112,8 +114,53 @@ class GPSWaypointManager(Node):
         self.theta_y = 0.0
         self.theta_z = 0.0
         self.waypoints_array = None
-        self.waypoints_array = np.array([[0.0],[0.0],[0.0]])
+        self.waypoints_array = np.array([[100.0],[0.0],[0.0]])
         self.waypoint_range_set = 3.5
+        
+        # Action
+        self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClient
+        self.action_sent = False  
+        self.stop = False # True=stop, False=go
+
+    # Action
+    def send_action_request(self):
+        goal_msg = StopFlag.Goal()
+        
+        # stop変数の状態でaの値を決定
+        if self.stop: # True
+            goal_msg.a = 1  # stop
+        else: # False
+            goal_msg.a = 0  # go
+            
+        goal_msg.b = 2  # 任意の値を設定
+
+        # アクションサーバーが利用可能になるまで待機
+        self.action_client.wait_for_server()
+
+        # アクションを非同期で送信
+        self.future = self.action_client.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)
+        self.future.add_done_callback(self.response_callback)
+
+    # フィードバックを受け取るコールバック関数
+    def feedback_callback(self, feedback):
+        self.get_logger().info(f"Received feedback: {feedback.feedback.rate}")
+
+    # 結果を受け取るコールバック関数
+    def response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info("Goal rejected")
+            return
+
+        self.get_logger().info("Goal accepted")
+
+        self.result_future = goal_handle.get_result_async()
+        self.result_future.add_done_callback(self.result_callback)
+
+    # 結果のコールバック
+    def result_callback(self, future):
+        result = future.result().result
+        self.get_logger().info(f"Result: {result.sum}")
 
     def key_input_handler(self, event):
         key = event.char.lower()
@@ -261,7 +308,7 @@ class GPSWaypointManager(Node):
         self.theta_x, self.theta_y, self.theta_z = 0, 0, yaw * 180 / math.pi
 
     def waypoint_manager(self):
-        #self.get_logger().info(f"test: {self.current_waypoint}")
+        self.get_logger().info(f"test: {self.current_waypoint}")
         #if self.waypoints_array is None or self.stop_flag:
         #    return
             
@@ -283,10 +330,10 @@ class GPSWaypointManager(Node):
                 self.current_waypoint += 1
             else:
                 # goal:stopをtrueにしてアクションを再送信
-                a=1;
-                #self.stop_flag = True
-                #self.get_logger().info("Stop flag reset to True")
-                #self.send_action_request()
+                #a=1;
+                self.stop = True
+                self.get_logger().info("Stop flag reset to True")
+                self.send_action_request()
 
         pose_array = self.current_waypoint_msg(self.waypoints_array[:, self.current_waypoint], 'map')
         self.waypoint_pub.publish(pose_array)
