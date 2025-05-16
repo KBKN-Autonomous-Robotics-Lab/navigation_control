@@ -78,14 +78,20 @@ class GPSWaypointManager(Node):
             #(35.42589533, 139.3139987), # waypoint 3
             #(35.42596721, 139.3139898), # waypoint 4
             #(35.42596884, 139.3139395) # waypoint 3 nakaniwakokomade
-            (35.4265706, 139.3141858), # waypoint 1 asupharuto
-            (35.4266018, 139.3141984), # waypoint 2
-            (35.4266132, 139.314226), # waypoint 3
-            (35.4266162, 139.3142614) # waypoint 4
+            #(35.4265706, 139.3141858), # waypoint 1 asupharutokokokara
+            #(35.4266018, 139.3141984), # waypoint 2
+            #(35.4266132, 139.314226), # waypoint 3
+            #(35.4266162, 139.3142614), # waypoint 4 asupharutokokomade
+            (35.426273, 139.3141582), # waypoint 1 higasikan kokokara
+            (35.4262964, 139.3141756), # waypoint 2
+            (35.4262772, 139.3141948), # waypoint 3
+            (35.4262508, 139.3141906), # waypoint 4
+            (35.4262238, 139.314187), # waypoint 5
+            (35.4262472, 139.3141576) # waypoint 6 higasikan kokomade
         ]        
         self.first_point = np.array([[0.0, 0.0, 0.0],
-                                    [5.0, 0.0, 0.0],
-                                    [10.0, 0.0, 0.0]])  # 開始点など                        
+                                    #[5.0, 0.0, 0.0],
+                                    [0.0, 0.0, 0.0]])  # 開始点など                        
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
         
         # Tkinter
