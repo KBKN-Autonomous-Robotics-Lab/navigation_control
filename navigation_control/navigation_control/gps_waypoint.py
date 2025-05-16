@@ -84,8 +84,8 @@ class GPSWaypointManager(Node):
             (35.4266162, 139.3142614) # waypoint 4
         ]        
         self.first_point = np.array([[0.0, 0.0, 0.0],
-                                    #[5.0, 0.0, 0.0],
-                                    [0.0, 0.0, 0.0]])  # 開始点など                        
+                                    [5.0, 0.0, 0.0],
+                                    [10.0, 0.0, 0.0]])  # 開始点など                        
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
         
         # Tkinter
@@ -308,7 +308,7 @@ class GPSWaypointManager(Node):
         self.theta_x, self.theta_y, self.theta_z = 0, 0, yaw * 180 / math.pi
 
     def waypoint_manager(self):
-        self.get_logger().info(f"test: {self.current_waypoint}")
+        #self.get_logger().info(f"test: {self.current_waypoint}")
         #if self.waypoints_array is None or self.stop_flag:
         #    return
             
