@@ -38,14 +38,12 @@ class StopSignControl(Node):
             self.stop = True
             #self.traffic_action = True
             self.send_action_request()
-            # 1秒後にアクションを送信
-            #self.timer1 = self.create_timer(1.0, self.delayed_action_send, callback_group=None)
+            # 1sec later send action
+            #self.timer = self.create_timer(1.0, self.send_action_request, callback_group=None)
+            # 5sec restart 
             self.timer = self.create_timer(5.0, self.make_once_timer(self.resume_after_stop, 'timer'))
         # 状態の更新
         self.previous_status = msg.data
-        
-    def delayed_action_send(self):
-        self.send_action_request()
     
     def resume_after_stop(self):
         self.stop = False
