@@ -89,9 +89,9 @@ class GPSWaypointManager(Node):
             (35.4262238, 139.314187), # waypoint 5
             (35.4262472, 139.3141576) # waypoint 6 higasikan kokomade
         ]        
-        self.first_point = np.array([[0.0, 0.0, 0.0],
-                                    #[5.0, 0.0, 0.0],
-                                    [0.0, 0.0, 0.0]])  # 開始点など                        
+        self.first_point = np.array([[5.0, 0.0, 0.0],
+                                    [10.0, 0.0, 0.0],
+                                    [20.0, 0.0, 0.0]])  # 開始点など                        
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
         
         # Tkinter
@@ -107,7 +107,7 @@ class GPSWaypointManager(Node):
         )
 
         self.goal_sub = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, qos_profile)       
-        self.odom_sub = self.create_subscription(nav_msgs.Odometry, '/fusion/odom', self.get_odom, qos_profile)
+        self.odom_sub = self.create_subscription(nav_msgs.Odometry, '/odom/wheel_imu', self.get_odom, qos_profile)
         self.waypoint_pub = self.create_publisher(geometry_msgs.PoseArray, 'current_waypoint', qos_profile)
         self.timer = self.create_timer(0.1, self.waypoint_manager)
 
@@ -327,7 +327,7 @@ class GPSWaypointManager(Node):
         waypoint_dist = math.hypot(relative_x, relative_y)
         waypoint_theta = abs(waypoint_rad * 180 / math.pi)
 
-        determine_dist = 4.5 if abs(waypoint_theta) > 90 else 4.5
+        determine_dist = 2.5 if abs(waypoint_theta) > 90 else 2.5
 
         #check if the waypoint reached
         if waypoint_dist < determine_dist:

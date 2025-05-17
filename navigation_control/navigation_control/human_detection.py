@@ -59,7 +59,8 @@ class HumanDetection(Node):
                 h = y2 - y1
 
                 # size and priority
-                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 470): # width , height -> pixel
+                # w > 50 h > 470 -> stop 5feet , w > 50 h > 240 -> change lane 10feet
+                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 240): # width , height -> pixel
                     cropped_img = result.orig_img[y1:y2, x1:x2]
                     return cropped_img
 
