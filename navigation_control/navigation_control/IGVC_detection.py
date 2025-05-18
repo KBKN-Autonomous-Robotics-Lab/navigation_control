@@ -33,6 +33,7 @@ class IGVCDetection(Node):
         
         # YOLOv8モデルのロード
         self.model = YOLO('yolov8x-oiv7.pt')
+        self.stop_sign_model = YOLO('yolov8x.pt')
         #self.model.classes = [536]  # クラス0（tire）のみ検出対象
 
     def image_callback(self, msg):
@@ -90,7 +91,7 @@ class IGVCDetection(Node):
             return "Go", None
     
     def detect_stop_sign(self, image):
-        results = self.model.predict(image, classes=[495])
+        results = self.stop_sign_model.predict(image, classes=[11]) #model:495 stop_sign_mode:11
         cropped_img = self.return_stop_sign(results)
 
         if cropped_img is not None:
@@ -140,11 +141,11 @@ class IGVCDetection(Node):
             classes = result.boxes.cls.cpu().numpy()
 
             height, width = result.orig_img.shape[:2]
-            min_width = 50   # size pixel
-            min_height = 50
+            min_width = 100   # size pixel
+            min_height = 100
 
             for box, cls in zip(boxes, classes):
-                if int(cls) == 495:
+                if int(cls) == 11: # model:495 stop_sign_mode:11
                     x1, y1, x2, y2 = map(int, box)
                     box_width = x2 - x1
                     box_height = y2 - y1
