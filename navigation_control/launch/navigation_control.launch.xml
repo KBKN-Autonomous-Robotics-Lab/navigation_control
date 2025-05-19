@@ -1,11 +1,21 @@
 <?xml version="1.0"?>
 <launch>
+  <!-- camera -->
+  <node pkg="navigation_control" exec="camera_publisher"/>
   <!-- waypoint_monitor -->
   <!--<node pkg="navigation_control" exec="waypoint_monitor"/>-->
   <!-- trafficlight_waypoint_monitor -->
-  <node pkg="navigation_control" exec="trafficlight_waypoint_monitor"/>
-  <!-- judge_trafficlight -->
-  <node pkg="navigation_control" exec="judge_trafficlight"/>
-  <!-- button -->
-  <node pkg="navigation_control" exec="button"/>
+  <!--<node pkg="navigation_control" exec="trafficlight_waypoint_monitor"/>
+  <node pkg="navigation_control" exec="judge_trafficlight"/>-->
+  <!-- detect IGVC object -->
+  <node pkg="navigation_control" exec="IGVC_detection"/>
+  <!-- stop sign -->
+  <!--<node pkg="navigation_control" exec="stop_sign_detection"/>-->
+  <node pkg="navigation_control" exec="stop_sign_control"/>
+  <!-- human -->
+  <!--<node pkg="navigation_control" exec="human_detection"/>-->
+  <node pkg="navigation_control" exec="human_control"/>
+  <!-- Tire -->
+  <!-- pothole -->
+  <node pkg="navigation_control" exec="pothole_detection"/>
 </launch>

@@ -19,8 +19,8 @@ class TireDetection(Node):
         self.bridge = CvBridge()
         
         # YOLOv8モデルのロード
-        self.model = YOLO('last.pt')
-        self.model.classes = [0]  # クラス0（tire）のみ検出対象
+        self.model = YOLO('yolov8x-oiv7.pt')
+        self.model.classes = [536]  # クラス0（tire）のみ検出対象
 
     def image_callback(self, msg):
         self.get_logger().info('Received image')
@@ -55,7 +55,7 @@ class TireDetection(Node):
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
 
-                if cls_id == 0 and conf >=0.5:  # tire class ID
+                if cls_id == 536 and conf >=0.5:  # tire class ID
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     cropped_img = result.orig_img[y1:y2, x1:x2]
                     return cropped_img

@@ -5,6 +5,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from std_msgs.msg import String  # 追加: トピックの型
 from my_msgs.action import StopFlag
+from rclpy.executors import Executor
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 # サーバーノード
 class StopSignControl(Node):
@@ -36,9 +38,23 @@ class StopSignControl(Node):
             self.stop = True
             #self.traffic_action = True
             self.send_action_request()
+            # 1sec later send action
+            #self.timer = self.create_timer(1.0, self.send_action_request, callback_group=None)
+            # 5sec restart 
+            self.timer = self.create_timer(5.0, self.make_once_timer(self.resume_after_stop, 'timer'))
         # 状態の更新
         self.previous_status = msg.data
-        
+    
+    def resume_after_stop(self):
+        self.stop = False
+        self.send_action_request()
+    
+    def make_once_timer(self, callback, timer):
+        def wrapper():
+            getattr(self, timer).cancel()  # タイマーを停止
+            callback()
+        return wrapper
+    
     # サーバーにアクションを送信する関数
     def send_action_request(self):
         goal_msg = StopFlag.Goal()
