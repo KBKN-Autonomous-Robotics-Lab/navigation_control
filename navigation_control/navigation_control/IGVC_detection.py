@@ -81,7 +81,7 @@ class IGVCDetection(Node):
     def detect_human(self, image):
         # 推論実行（classes指定不要、self.model.classesで制御されている）
         #results = self.model(image)
-        results = self.model.predict(image, classes=[381])
+        results = self.stop_sign_model.predict(image, classes=[0])
 
         human_img = self.extract_human(results)
         
@@ -131,7 +131,7 @@ class IGVCDetection(Node):
 
                 # size and priority
                 # w > 50 h > 470 -> stop 5feet , w > 50 h > 240 -> change lane 10feet
-                if cls_id == 381 and conf >= 0.5 and (w > 50 and h > 400): # width , height -> pixel
+                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 240): # width , height -> pixel
                     cropped_img = result.orig_img[y1:y2, x1:x2]
                     return cropped_img    
 
