@@ -109,6 +109,7 @@ class GPSWaypointManager(Node):
         self.goal_sub = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, qos_profile)       
         self.odom_sub = self.create_subscription(nav_msgs.Odometry, '/odom/wheel_imu', self.get_odom, qos_profile)
         self.waypoint_pub = self.create_publisher(geometry_msgs.PoseArray, 'current_waypoint', qos_profile)
+        self.waypoint_path_publisher = self.create_publisher(nav_msgs.Path, 'waypoint_path', qos_profile) 
         self.timer = self.create_timer(0.1, self.waypoint_manager)
 
         self.current_waypoint = 0
@@ -122,6 +123,7 @@ class GPSWaypointManager(Node):
         self.waypoints_array = None
         self.waypoints_array = np.array([[100.0],[0.0],[0.0]])
         self.waypoint_range_set = 3.5
+        self.waypoints_local_set = 0;
         
         # Action
         self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClient
@@ -194,11 +196,20 @@ class GPSWaypointManager(Node):
         next_z = xyz[2] + xyz_range[2]
         next_xyz = np.vstack((next_x,next_y,next_z))
         
-        
-        self.current_waypoint = 0;
+        if self.waypoints_local_set == 0:
+            self.current_waypoint = 0;
+            self.waypoints_array = xyz;
+            self.waypoints_local_set = 1;
+        else:
+            self.waypoints_array = np.insert(self.waypoints_array, len(self.waypoints_array[0,:]), xyz.T, axis=1)
+            
         #self.waypoints_array = np.array([[xyz[0], xyz[1], xyz[2]], [next_xyz[0], next_xyz[1], next_xyz[2]]])
-        self.waypoints_array = np.array([[xyz[0], next_xyz[0]],[xyz[1], next_xyz[1]], [xyz[2], next_xyz[2]]])
+        #self.waypoints_array = np.array([[xyz[0], next_xyz[0]],[xyz[1], next_xyz[1]], [xyz[2], next_xyz[2]]])
         #self.waypoints_array = np.stack((xyz,next_xyz))
+        
+        
+        
+        
         
         # クォータニオン → ヨー角（Z軸の回転）に変換
         #angle = math.atan2(2.0 * (qw * qz), 1.0 - 2.0 * (qz * qz))
@@ -343,6 +354,8 @@ class GPSWaypointManager(Node):
 
         pose_array = self.current_waypoint_msg(self.waypoints_array[:, self.current_waypoint], 'map')
         self.waypoint_pub.publish(pose_array)
+        waypoint_path = path_msg(self.waypoints_array, self.get_clock().now().to_msg(), 'odom')
+        self.waypoint_path_publisher.publish(waypoint_path) 
 
     def current_waypoint_msg(self, waypoint, set_frame_id):
         pose_array = geometry_msgs.PoseArray()
@@ -359,6 +372,22 @@ class GPSWaypointManager(Node):
     def run(self):
         self.root.mainloop()
 
+def path_msg(waypoints, stamp, parent_frame):
+    wp_msg = nav_msgs.Path()
+    wp_msg.header.frame_id = parent_frame
+    wp_msg.header.stamp = stamp
+        
+    # ウェイポイントを追加
+    for i in range(waypoints.shape[1]):
+        waypoint = geometry_msgs.PoseStamped()
+        waypoint.header.frame_id = parent_frame
+        waypoint.header.stamp = stamp
+        waypoint.pose.position.x = waypoints[0, i]
+        waypoint.pose.position.y = waypoints[1, i]
+        waypoint.pose.position.z = 0.0
+        waypoint.pose.orientation.w = 1.0
+        wp_msg.poses.append(waypoint)
+    return wp_msg
 
 def main(args=None):
     rclpy.init(args=args)
