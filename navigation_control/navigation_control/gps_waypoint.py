@@ -14,6 +14,7 @@ import threading
 from rclpy.time import Time
 from rclpy.action import ActionClient
 from my_msgs.action import StopFlag  # Actionメッセージのインポート
+from std_msgs.msg import Int32
 
 
 def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
@@ -109,6 +110,7 @@ class GPSWaypointManager(Node):
         self.goal_sub = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, qos_profile)       
         self.odom_sub = self.create_subscription(nav_msgs.Odometry, '/odom/wheel_imu', self.get_odom, qos_profile)
         self.waypoint_pub = self.create_publisher(geometry_msgs.PoseArray, 'current_waypoint', qos_profile)
+        self.waypoint_number_pub = self.create_publisher(Int32, 'waypoint_number', qos_profile)
         self.waypoint_path_publisher = self.create_publisher(nav_msgs.Path, 'waypoint_path', qos_profile) 
         self.timer = self.create_timer(0.1, self.waypoint_manager)
 
@@ -354,6 +356,7 @@ class GPSWaypointManager(Node):
 
         pose_array = self.current_waypoint_msg(self.waypoints_array[:, self.current_waypoint], 'map')
         self.waypoint_pub.publish(pose_array)
+        self.waypoint_number_pub.publish(Int32(data=self.current_waypoint))
         waypoint_path = path_msg(self.waypoints_array, self.get_clock().now().to_msg(), 'odom')
         self.waypoint_path_publisher.publish(waypoint_path) 
 
