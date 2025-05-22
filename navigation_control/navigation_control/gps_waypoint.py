@@ -15,6 +15,7 @@ from rclpy.time import Time
 from rclpy.action import ActionClient
 from my_msgs.action import StopFlag  # Actionメッセージのインポート
 from std_msgs.msg import Int32
+from std_msgs.msg import String
 
 class GPSWaypointManager(Node):
     def __init__(self):
@@ -72,7 +73,8 @@ class GPSWaypointManager(Node):
             depth=10
         )
 
-        self.goal_sub = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, qos_profile)       
+        self.goal_sub = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, qos_profile)
+        self.human_sub = self.create_subscription(String, '/human_status', self.human_callback, qos_profile) # lanechange 
         self.odom_sub = self.create_subscription(nav_msgs.Odometry, '/odom/wheel_imu', self.get_odom, qos_profile)
         self.waypoint_pub = self.create_publisher(geometry_msgs.PoseArray, 'current_waypoint', qos_profile)
         self.waypoint_number_pub = self.create_publisher(Int32, 'waypoint_number', qos_profile)
@@ -91,6 +93,7 @@ class GPSWaypointManager(Node):
         self.waypoints_array = np.array([[100.0],[0.0],[0.0]])
         self.waypoint_range_set = 3.5
         self.waypoints_local_set = 0;
+        self.previous_status = None
         
         # Action
         self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClient
@@ -173,11 +176,7 @@ class GPSWaypointManager(Node):
         #self.waypoints_array = np.array([[xyz[0], xyz[1], xyz[2]], [next_xyz[0], next_xyz[1], next_xyz[2]]])
         #self.waypoints_array = np.array([[xyz[0], next_xyz[0]],[xyz[1], next_xyz[1]], [xyz[2], next_xyz[2]]])
         #self.waypoints_array = np.stack((xyz,next_xyz))
-        
-        
-        
-        
-        
+
         # クォータニオン → ヨー角（Z軸の回転）に変換
         #angle = math.atan2(2.0 * (qw * qz), 1.0 - 2.0 * (qz * qz))
         
@@ -187,6 +186,19 @@ class GPSWaypointManager(Node):
         self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")    
         self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")    
         self.get_logger().info(f"xyz_range:{xyz_range}")    
+    
+    def human_callback(self, msg):
+        human_status = msg.data
+        
+        # waypoint 0 and stop -> add current_waypoint number
+        if self.current_waypoint == 0:
+            if human_status == "Stop":
+                if self.previous_status != "Stop":
+                    self.get_logger().info("human detected")
+                    self.current_waypoint += 1
+
+        # 状態の更新
+        self.previous_status = msg.data
     
     def orientation_to_yaw(self, z, w):
         yaw = np.arctan2(2.0 * (w * z), 1.0 - 2.0 * (z ** 2))
