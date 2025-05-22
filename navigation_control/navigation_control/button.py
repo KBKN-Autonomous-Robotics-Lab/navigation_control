@@ -24,7 +24,7 @@ class WaypointMonitor(Node):
         # Tkinterウィンドウとボタンの設定
         self.root = tk.Tk()
         self.root.title("Waypoint Monitor Control")
-        self.button = tk.Button(self.root, text="Resume", command=self.resume_action)
+        self.button = tk.Button(self.root, text="Resume", command=self.resume_action, width = 20, height = 5)
         self.button.pack()
 
     # サーバーにアクションを送信する関数
