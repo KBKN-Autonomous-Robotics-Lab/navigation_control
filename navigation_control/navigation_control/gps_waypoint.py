@@ -16,45 +16,6 @@ from rclpy.action import ActionClient
 from my_msgs.action import StopFlag  # Actionメッセージのインポート
 from std_msgs.msg import Int32
 
-
-def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
-    rad_x = math.radians(theta_x)
-    rad_y = math.radians(theta_y)
-    rad_z = math.radians(theta_z)
-    rot_x = np.array([[ 1,               0,                0],
-                      [ 0, math.cos(rad_x), -math.sin(rad_x)],
-                      [ 0, math.sin(rad_x),  math.cos(rad_x)]])
-    
-    rot_y = np.array([[ math.cos(rad_y), 0,  math.sin(rad_y)],
-                      [               0, 1,                0],
-                      [-math.sin(rad_y), 0,  math.cos(rad_y)]])
-    
-    rot_z = np.array([[ math.cos(rad_z), -math.sin(rad_z), 0],
-                      [ math.sin(rad_z),  math.cos(rad_z), 0],
-                      [               0,                0, 1]])
-    rot_matrix = rot_z.dot(rot_y.dot(rot_x))
-    #print(f"rot_matrix ={rot_matrix}")
-    #print(f"pointcloud ={pointcloud.shape}")
-    rot_pointcloud = rot_matrix.dot(pointcloud)
-    return rot_pointcloud, rot_matrix
-
-
-def quaternion_to_euler(x, y, z, w):
-    t0 = +2.0 * (w * x + y * z)
-    t1 = +1.0 - 2.0 * (x * x + y * y)
-    roll = math.atan2(t0, t1)
-
-    t2 = +2.0 * (w * y - z * x)
-    t2 = +1.0 if t2 > +1.0 else t2
-    t2 = -1.0 if t2 < -1.0 else t2
-    pitch = math.asin(t2)
-
-    t3 = +2.0 * (w * z + x * y)
-    t4 = +1.0 - 2.0 * (y * y + z * z)
-    yaw = math.atan2(t3, t4)
-
-    return roll, pitch, yaw
-
 class GPSWaypointManager(Node):
     def __init__(self):
         super().__init__('gps_waypoint_manager')
@@ -97,8 +58,12 @@ class GPSWaypointManager(Node):
         
         # Tkinter
         self.root = tk.Tk()
+        self.root.title("GPS Waypoint Manager")
         self.root.bind("<Key>", self.key_input_handler)
         self.reversed_flag = False
+        # ラベルの追加
+        self.instruction_label = tk.Label(self.root, text='waypointを反転したい場合は"r"キーを押してください', font=('Helvetica', 14))
+        self.instruction_label.pack(pady=10)
 
         qos_profile = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -174,8 +139,8 @@ class GPSWaypointManager(Node):
 
     def key_input_handler(self, event):
         key = event.char.lower()
-        if key == 'b':
-            self.get_logger().info("キー入力: 'b' を受け取りました。ref_pointsを反転します。")
+        if key == 'r':
+            self.get_logger().info("キー入力: 'r' を受け取りました。waypointを反転します。")
             self.ref_points.reverse()
             self.reversed_flag = True
         elif key == 'a':
@@ -374,6 +339,44 @@ class GPSWaypointManager(Node):
 
     def run(self):
         self.root.mainloop()
+
+def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
+    rad_x = math.radians(theta_x)
+    rad_y = math.radians(theta_y)
+    rad_z = math.radians(theta_z)
+    rot_x = np.array([[ 1,               0,                0],
+                      [ 0, math.cos(rad_x), -math.sin(rad_x)],
+                      [ 0, math.sin(rad_x),  math.cos(rad_x)]])
+    
+    rot_y = np.array([[ math.cos(rad_y), 0,  math.sin(rad_y)],
+                      [               0, 1,                0],
+                      [-math.sin(rad_y), 0,  math.cos(rad_y)]])
+    
+    rot_z = np.array([[ math.cos(rad_z), -math.sin(rad_z), 0],
+                      [ math.sin(rad_z),  math.cos(rad_z), 0],
+                      [               0,                0, 1]])
+    rot_matrix = rot_z.dot(rot_y.dot(rot_x))
+    #print(f"rot_matrix ={rot_matrix}")
+    #print(f"pointcloud ={pointcloud.shape}")
+    rot_pointcloud = rot_matrix.dot(pointcloud)
+    return rot_pointcloud, rot_matrix
+
+
+def quaternion_to_euler(x, y, z, w):
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll = math.atan2(t0, t1)
+
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch = math.asin(t2)
+
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw = math.atan2(t3, t4)
+
+    return roll, pitch, yaw
 
 def path_msg(waypoints, stamp, parent_frame):
     wp_msg = nav_msgs.Path()

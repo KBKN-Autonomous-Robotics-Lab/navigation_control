@@ -33,6 +33,7 @@ setup(
         "judge_trafficlight = navigation_control.judge_trafficlight:main",
         'camera_publisher = navigation_control.camera_publisher:main',
         'gps_waypoint = navigation_control.gps_waypoint:main',
+        'gps_waypoint_yaml = navigation_control.gps_waypoint_yaml:main',
         'stop_sign_detection = navigation_control.stop_sign_detection:main',
         'human_realsense = navigation_control.human_realsense:main',
         'stop_sign = navigation_control.stop_sign:main',
