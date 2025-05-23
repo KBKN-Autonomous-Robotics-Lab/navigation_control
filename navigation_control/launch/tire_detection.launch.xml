@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- camera -->
+  <node pkg="navigation_control" exec="camera_publisher"/>
+  <!-- Tire -->
+  <node pkg="navigation_control" exec="tire_detection"/>
+</launch>

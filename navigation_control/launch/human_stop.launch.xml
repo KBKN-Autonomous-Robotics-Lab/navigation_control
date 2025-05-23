@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- camera -->
+  <node pkg="navigation_control" exec="camera_publisher"/>
+  <!-- human -->
+  <node pkg="navigation_control" exec="human_detection"/>
+  <node pkg="navigation_control" exec="human_control"/>
+</launch>
