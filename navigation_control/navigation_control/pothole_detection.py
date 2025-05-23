@@ -10,25 +10,6 @@ import struct
 from collections import deque
 import math
 
-def quaternion_to_euler(x, y, z, w):
-    rot_matrix = np.array([
-        [1 - 2 * (y**2 + z**2), 2 * (x*y - z*w),     2 * (x*z + y*w)],
-        [2 * (x*y + z*w),       1 - 2 * (x**2 + z**2), 2 * (y*z - x*w)],
-        [2 * (x*z - y*w),       2 * (y*z + x*w),     1 - 2 * (x**2 + y**2)]
-    ])
-    roll = np.arctan2(rot_matrix[2, 1], rot_matrix[2, 2])
-    pitch = np.arctan2(-rot_matrix[2, 0], np.sqrt(rot_matrix[2, 1]**2 + rot_matrix[2, 2]**2))
-    yaw = np.arctan2(rot_matrix[1, 0], rot_matrix[0, 0])
-    return roll, pitch, yaw
-
-def transform_point_to_global(x, y, robot_pose):
-    rx, ry, yaw = robot_pose
-    cos_yaw = math.cos(yaw)
-    sin_yaw = math.sin(yaw)
-    gx = rx + x * cos_yaw - y * sin_yaw
-    gy = ry + x * sin_yaw + y * cos_yaw
-    return gx, gy
-
 class PotholeDetector(Node):
 
     def __init__(self):
@@ -36,7 +17,7 @@ class PotholeDetector(Node):
         self.subscription = self.create_subscription(
             Image, '/image_raw', self.listener_callback, 1)
         self.odom_sub = self.create_subscription(
-            Odometry, '/odom', self.odom_callback, 1)
+            Odometry, '/odom/wheel_imu', self.odom_callback, 1)
         self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 1)
         self.bridge = CvBridge()
         self.robot_pose = (0.0, 0.0, 0.0)  # (x, y, yaw)
@@ -131,6 +112,25 @@ class PotholeDetector(Node):
         pc_msg.data = b''.join([struct.pack('fff', *pt) for pt in all_points])
 
         self.pc_publisher.publish(pc_msg)
+
+def quaternion_to_euler(x, y, z, w):
+    rot_matrix = np.array([
+        [1 - 2 * (y**2 + z**2), 2 * (x*y - z*w),     2 * (x*z + y*w)],
+        [2 * (x*y + z*w),       1 - 2 * (x**2 + z**2), 2 * (y*z - x*w)],
+        [2 * (x*z - y*w),       2 * (y*z + x*w),     1 - 2 * (x**2 + y**2)]
+    ])
+    roll = np.arctan2(rot_matrix[2, 1], rot_matrix[2, 2])
+    pitch = np.arctan2(-rot_matrix[2, 0], np.sqrt(rot_matrix[2, 1]**2 + rot_matrix[2, 2]**2))
+    yaw = np.arctan2(rot_matrix[1, 0], rot_matrix[0, 0])
+    return roll, pitch, yaw
+
+def transform_point_to_global(x, y, robot_pose):
+    rx, ry, yaw = robot_pose
+    cos_yaw = math.cos(yaw)
+    sin_yaw = math.sin(yaw)
+    gx = rx + x * cos_yaw - y * sin_yaw
+    gy = ry + x * sin_yaw + y * cos_yaw
+    return gx, gy
 
 def main(args=None):
     rclpy.init(args=args)
