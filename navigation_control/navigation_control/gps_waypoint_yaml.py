@@ -29,19 +29,19 @@ class GPSWaypointManager(Node):
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
 
-        self.init_lat = 35.4259544
-        self.init_lon = 139.313824
-        self.init_theta = 180.0
+        self.init_lat = 42.400911
+        self.init_lon = -83.5314708
+        self.init_theta = 0.0
         
         self.ref_points = [
-            (35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
-            (35.42580947, 139.3138761), # waypoint 2
-            (35.42582577, 139.3139183), # waypoint 3
-            (35.42584276, 139.3139622), # waypoint 1
-            (35.42585746, 139.3139984), # waypoint 2
-            (35.42589533, 139.3139987), # waypoint 3
-            (35.42596721, 139.3139898), # waypoint 4
-            (35.42596884, 139.3139395) # waypoint 3 nakaniwakokomade
+            #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
+            #(35.42580947, 139.3138761), # waypoint 2
+            #(35.42582577, 139.3139183), # waypoint 3
+            #(35.42584276, 139.3139622), # waypoint 1
+            #(35.42585746, 139.3139984), # waypoint 2
+            #(35.42589533, 139.3139987), # waypoint 3
+            #(35.42596721, 139.3139898), # waypoint 4
+            #(35.42596884, 139.3139395) # waypoint 3 nakaniwakokomade
             #(35.4265706, 139.3141858), # waypoint 1 asupharutokokokara
             #(35.4266018, 139.3141984), # waypoint 2
             #(35.4266132, 139.314226), # waypoint 3
@@ -52,6 +52,28 @@ class GPSWaypointManager(Node):
             #(35.4262508, 139.3141906), # waypoint 4
             #(35.4262238, 139.314187), # waypoint 5
             #(35.4262472, 139.3141576) # waypoint 6 higasikan kokomade
+            (42.4009488, -83.5314714), # waypoint 0 selfdrive
+            (42.4009818, -83.531451), # waypoint 1
+            (42.4009758, -83.5313694), # waypoint 2
+            (42.4009422, -83.531361), # waypoint 3
+            (42.4009194, -83.5313334), # waypoint 4
+            (42.4008762, -83.5313316), # waypoint 5
+            (42.4008582, -83.5313532), # waypoint 6
+            (42.4007976, -83.5313532), # waypoint 7
+            (42.4007622, -83.5313538), # waypoint 8
+            (42.4007592, -83.531412), # waypoint 9
+            (42.4007562, -83.5314834), # waypoint 10
+            (42.4007574, -83.5315272), # waypoint 11
+            (42.4007616, -83.5315872), # waypoint 12
+            (42.4008366, -83.5316052), # waypoint 13
+            (42.40086, -83.5316286), # waypoint 14
+            (42.400905, -83.5316322), # waypoint 15
+            (42.4009206, -83.5316088), # waypoint 16
+            (42.4009692, -83.5316016), # waypoint 17
+            (42.4009752, -83.5315482), # waypoint 18
+            (42.4009764, -83.5314954), # waypoint 19
+            (42.4010046, -83.5314792), # waypoint 20
+            (42.4010262, -83.531481) # waypoint goal selfdrive
         ]        
         self.first_point = np.array([[0.0, 0.0, 0.0],
                                     #[10.0, 0.0, 0.0],

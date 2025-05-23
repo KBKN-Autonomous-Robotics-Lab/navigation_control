@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- camera -->
+  <node pkg="navigation_control" exec="camera_publisher"/>
+  <!-- pothole -->
+  <node pkg="navigation_control" exec="pothole_detection"/>
+</launch>
