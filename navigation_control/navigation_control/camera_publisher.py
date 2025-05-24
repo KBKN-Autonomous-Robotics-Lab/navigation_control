@@ -9,11 +9,12 @@ from rclpy.action import ActionClient
 from std_msgs.msg import String  # 追加: トピックの型
 from my_msgs.action import StopFlag
 from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import CompressedImage
 
 class MJPGCameraPublisher(Node):
     def __init__(self):
         super().__init__('camera_publisher')
-        self.publisher_ = self.create_publisher(Image, 'image_raw', qos_profile_sensor_data)
+        self.publisher_ = self.create_publisher(CompressedImage, 'image_raw', qos_profile_sensor_data)
         self.cap = cv2.VideoCapture('/dev/sensors/webcam')
         self.bridge = CvBridge()
         self.timer = self.create_timer(0.2, self.timer_callback)
@@ -65,8 +66,13 @@ class MJPGCameraPublisher(Node):
         if self.traffic_flag == 1:
             if ret:
                 # フレームを RGB に変換してパブリッシュ
-                image_message = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-                self.publisher_.publish(image_message)
+                msg = CompressedImage()
+                msg.header.stamp = self.get_clock().now().to_msg()
+                msg.format = "jpeg"
+                msg.data = cv2.imencode('.jpg', frame)[1].tobytes()
+                self.publisher_.publish(msg)
+                #image_message = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+                #self.publisher_.publish(image_message)
             else:
                 self.get_logger().warning('フレームを取得できません')
 
