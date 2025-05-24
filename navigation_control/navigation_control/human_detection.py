@@ -6,15 +6,17 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from ultralytics import YOLO
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import CompressedImage
 
 class HumanDetection(Node):
     def __init__(self):
         super().__init__('human_detector')
         self.subscription = self.create_subscription(
-            Image,
+            CompressedImage,
             '/image_raw',  # サブスクライブする画像トピック
             self.image_callback,
-            1)
+            10)
         self.publisher = self.create_publisher(String, 'human_status', 10)
         self.bridge = CvBridge()
         
@@ -22,11 +24,12 @@ class HumanDetection(Node):
         self.model = YOLO('yolov8x.pt')
         self.model.classes = [0]  # クラス0（human）のみ検出対象
 
-    def image_callback(self, msg):
+    def image_callback(self, msg: CompressedImage):
         self.get_logger().info('Received image')
-        
+        np_arr = np.frombuffer(msg.data, np.uint8)        
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         # ROS Imageメッセージ -> OpenCV画像
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        #cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
         # human detect
         status, human_img = self.detect_human(cv_image)

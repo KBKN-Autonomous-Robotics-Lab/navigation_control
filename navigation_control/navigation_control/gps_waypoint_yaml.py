@@ -29,8 +29,8 @@ class GPSWaypointManager(Node):
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
 
-        self.init_lat = 42.400911
-        self.init_lon = -83.5314708
+        self.init_lat = 42.4008888
+        self.init_lon = -83.5310724
         self.init_theta = 0.0
         
         self.ref_points = [
@@ -41,39 +41,63 @@ class GPSWaypointManager(Node):
             #(35.42585746, 139.3139984), # waypoint 2
             #(35.42589533, 139.3139987), # waypoint 3
             #(35.42596721, 139.3139898), # waypoint 4
-            #(35.42596884, 139.3139395) # waypoint 3 nakaniwakokomade
-            #(35.4265706, 139.3141858), # waypoint 1 asupharutokokokara
-            #(35.4266018, 139.3141984), # waypoint 2
-            #(35.4266132, 139.314226), # waypoint 3
-            #(35.4266162, 139.3142614), # waypoint 4 asupharutokokomade
-            #(35.426273, 139.3141582), # waypoint 1 higasikan kokokara
-            #(35.4262964, 139.3141756), # waypoint 2
-            #(35.4262772, 139.3141948), # waypoint 3
-            #(35.4262508, 139.3141906), # waypoint 4
-            #(35.4262238, 139.314187), # waypoint 5
-            #(35.4262472, 139.3141576) # waypoint 6 higasikan kokomade
-            (42.4009488, -83.5314714), # waypoint 0 selfdrive
-            (42.4009818, -83.531451), # waypoint 1
-            (42.4009758, -83.5313694), # waypoint 2
-            (42.4009422, -83.531361), # waypoint 3
-            (42.4009194, -83.5313334), # waypoint 4
-            (42.4008762, -83.5313316), # waypoint 5
-            (42.4008582, -83.5313532), # waypoint 6
-            (42.4007976, -83.5313532), # waypoint 7
-            (42.4007622, -83.5313538), # waypoint 8
-            (42.4007592, -83.531412), # waypoint 9
-            (42.4007562, -83.5314834), # waypoint 10
-            (42.4007574, -83.5315272), # waypoint 11
-            (42.4007616, -83.5315872), # waypoint 12
-            (42.4008366, -83.5316052), # waypoint 13
-            (42.40086, -83.5316286), # waypoint 14
-            (42.400905, -83.5316322), # waypoint 15
-            (42.4009206, -83.5316088), # waypoint 16
-            (42.4009692, -83.5316016), # waypoint 17
-            (42.4009752, -83.5315482), # waypoint 18
-            (42.4009764, -83.5314954), # waypoint 19
-            (42.4010046, -83.5314792), # waypoint 20
-            (42.4010262, -83.531481) # waypoint goal selfdrive
+            #(35.42596884, 139.3139395)  # waypoint 3 nakaniwakokomade
+            #(35.4265706, 139.3141858),  # waypoint 1 asupharutokokokara
+            #(35.4266018, 139.3141984),  # waypoint 2
+            #(35.4266132, 139.314226),   # waypoint 3
+            #(35.4266162, 139.3142614),  # waypoint 4 asupharutokokomade
+            #(35.426273, 139.3141582),   # waypoint 1 higasikan kokokara
+            #(35.4262964, 139.3141756),  # waypoint 2
+            #(35.4262772, 139.3141948),  # waypoint 3
+            #(35.4262508, 139.3141906),  # waypoint 4
+            #(35.4262238, 139.314187),   # waypoint 5
+            #(35.4262472, 139.3141576)   # waypoint 6 higasikan kokomade
+            
+            #(42.4009488, -83.5314714), # waypoint  0 selfdrive
+            #(42.4009818, -83.531451),  # waypoint  1
+            #(42.4009758, -83.5313694), # waypoint  2
+            #(42.4009422, -83.531361),  # waypoint  3
+            #(42.4009194, -83.5313334), # waypoint  4
+            #(42.4008762, -83.5313316), # waypoint  5
+            #(42.4008582, -83.5313532), # waypoint  6
+            #(42.4007976, -83.5313532), # waypoint  7
+            #(42.4007622, -83.5313538), # waypoint  8
+            #(42.4007592, -83.531412),  # waypoint  9
+            #(42.4007562, -83.5314834), # waypoint 10
+            #(42.4007574, -83.5315272), # waypoint 11
+            #(42.4007616, -83.5315872), # waypoint 12
+            #(42.4008366, -83.5316052), # waypoint 13
+            #(42.40086, -83.5316286),   # waypoint 14
+            #(42.400905, -83.5316322),  # waypoint 15
+            #(42.4009206, -83.5316088), # waypoint 16
+            #(42.4009692, -83.5316016), # waypoint 17
+            #(42.4009752, -83.5315482), # waypoint 18
+            #(42.4009764, -83.5314954), # waypoint 19
+            #(42.4010046, -83.5314792), # waypoint 20
+            #(42.4010262, -83.531481)   # waypoint goal selfdrive
+            
+            #(42.4009188,-83.531346),  # waypoint  0 autonav yobi
+            #(42.40098,-83.5313508),   # waypoint  1
+            #(42.4009788,-83.5314744), # waypoint  2
+            #(42.400977,-83.5316148),  # waypoint  3
+            #(0), # waypoint  4
+            #(0), # waypoint  5
+            #(0), # waypoint  6
+            #(0), # waypoint  7
+            #(42.4007526,-83.5316082), # waypoint  8
+            #(42.4007562,-83.531475),  # waypoint  9
+            #(42.4007628,-83.5313478), # waypoint 10
+            #(42.4008246,-83.5313418), # waypoint 11
+            #(42.4009152,-83.5313436)  # waypoint 12 goal autonav yobi
+            
+            (42.4009806,-83.5310784), # waypoint 0 qualification
+            (42.400983,-83.5311432),  # waypoint 1
+            (42.400977,-83.531208),   # waypoint 2
+            (42.4008882,-83.5312026), # waypoint 3
+            (42.4007634,-83.531193),  # waypoint 4
+            (42.4007616,-83.531133),  # waypoint 5
+            (42.4007664,-83.5310694), # waypoint 6
+            (42.400935,-83.5310748)   # waypoint 7 goal qualification
         ]        
         self.first_point = np.array([[0.0, 0.0, 0.0],
                                     #[10.0, 0.0, 0.0],
@@ -191,22 +215,19 @@ class GPSWaypointManager(Node):
         waypoint_list = []
 
         for i in range(waypoints.shape[1]):
-            point_dict = {
-                'point': {
-                    'x': float(waypoints[0][i]),
-                    'y': float(waypoints[1][i]),
-                    'z': float(waypoints[2][i])
-                }
-            }
-            waypoint_list.append(point_dict)
+            waypoint = [
+                float(waypoints[0][i]),
+                float(waypoints[1][i]),
+                float(waypoints[2][i])
+            ]
+            waypoint_list.append(waypoint)
 
         yaml_data = {"waypoints": waypoint_list}
 
         with open("IGVC_waypoints.yaml", "w") as file:
-            yaml.dump(yaml_data, file, default_flow_style=False, allow_unicode=True)
+            yaml.dump(yaml_data, file, default_flow_style=None, allow_unicode=True)
 
         self.get_logger().info("IGVC_waypoints.yaml に保存しました。")
-
     
     def run(self):
         # Tkinterのメインループを開始
