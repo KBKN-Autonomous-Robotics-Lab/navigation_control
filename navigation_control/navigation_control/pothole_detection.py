@@ -9,20 +9,22 @@ import numpy as np
 import struct
 from collections import deque
 import math
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import CompressedImage
 
 class PotholeDetector(Node):
 
     def __init__(self):
         super().__init__('pothole_detector')
         self.subscription = self.create_subscription(
-            Image, '/image_raw', self.listener_callback, 1)
+            CompressedImage, '/image_raw', self.listener_callback, 10)
         self.odom_sub = self.create_subscription(
             Odometry, '/odom/wheel_imu', self.odom_callback, 1)
         self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 1)
         self.bridge = CvBridge()
         self.robot_pose = (0.0, 0.0, 0.0)  # (x, y, yaw)
         self.points_buffer = deque()
-        self.publish_timer = self.create_timer(0.1, self.publish_accumulated_pointcloud)
+        self.publish_timer = self.create_timer(0.2, self.publish_accumulated_pointcloud)
         self.lifetime_sec = 20.0
 
     def odom_callback(self, msg):
@@ -31,8 +33,11 @@ class PotholeDetector(Node):
         _, _, yaw = quaternion_to_euler(ori.x, ori.y, ori.z, ori.w)
         self.robot_pose = (pos.x, pos.y, yaw)
 
-    def listener_callback(self, msg):
-        frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+    def listener_callback(self, msg: CompressedImage):
+        np_arr = np.frombuffer(msg.data, np.uint8)        
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        
+        #frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         blur = cv2.GaussianBlur(frame, (5, 5), 0)
 
         lower_white = np.array([200, 200, 200])

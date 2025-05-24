@@ -11,15 +11,17 @@ from collections import deque
 import math
 import struct
 from std_msgs.msg import Header
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import CompressedImage
 
 class TireDetection(Node):
     def __init__(self):
         super().__init__('tire_detector')
         self.subscription = self.create_subscription(
-            Image,
+            CompressedImage,
             '/image_raw',  # サブスクライブする画像トピック
             self.image_callback,
-            1)
+            10)
         self.odom_sub = self.create_subscription(
             Odometry, '/odom/wheel_imu', self.odom_callback, 1)
         
@@ -28,7 +30,7 @@ class TireDetection(Node):
         self.bridge = CvBridge()
         self.robot_pose = (0.0, 0.0, 0.0)  # (x, y, yaw)
         self.points_buffer = deque()
-        self.publish_timer = self.create_timer(0.1, self.publish_accumulated_pointcloud)
+        self.publish_timer = self.create_timer(0.2, self.publish_accumulated_pointcloud)
         self.lifetime_sec = 10.0
         
         # YOLOv8モデルのロード
@@ -41,11 +43,12 @@ class TireDetection(Node):
         _, _, yaw = quaternion_to_euler(ori.x, ori.y, ori.z, ori.w)
         self.robot_pose = (pos.x, pos.y, yaw)
 
-    def image_callback(self, msg):
+    def image_callback(self, msg: CompressedImage):
         self.get_logger().info('Received image')
-        
+        np_arr = np.frombuffer(msg.data, np.uint8)        
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         # ROS Imageメッセージ -> OpenCV画像
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        #cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
         # タイヤ検出
         status, tire_img, tire_info, img_shape = self.detect_tire(cv_image)

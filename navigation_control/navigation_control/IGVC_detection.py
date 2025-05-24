@@ -10,7 +10,8 @@ import easyocr
 import re
 import tkinter as tk
 from threading import Thread
-
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import CompressedImage
 
 # グローバル変数（GUIで表示するため）
 recognized_text  = "Initializing..."
@@ -19,10 +20,10 @@ class IGVCDetection(Node):
     def __init__(self):
         super().__init__('igvc_detector')
         self.subscription = self.create_subscription(
-            Image,
+            CompressedImage,
             '/image_raw',  # サブスクライブする画像トピック
             self.image_callback,
-            1)
+            10)
         self.tire_publisher = self.create_publisher(String, 'tire_status', 10)
         self.human_publisher = self.create_publisher(String, 'human_status', 10)
         self.stopsign_publisher = self.create_publisher(String, 'stop_sign_status', 10)
@@ -36,11 +37,13 @@ class IGVCDetection(Node):
         self.stop_sign_model = YOLO('yolov8x.pt')
         #self.model.classes = [536]  # クラス0（tire）のみ検出対象
 
-    def image_callback(self, msg):
+    def image_callback(self, msg: CompressedImage):
         self.get_logger().info('Received image')
         
+        np_arr = np.frombuffer(msg.data, np.uint8)        
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         # ROS Imageメッセージ -> OpenCV画像
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        #cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
         # タイヤ検出
         tire_status, tire_img = self.detect_tire(cv_image)

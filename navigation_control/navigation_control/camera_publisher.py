@@ -14,7 +14,7 @@ from sensor_msgs.msg import CompressedImage
 class MJPGCameraPublisher(Node):
     def __init__(self):
         super().__init__('camera_publisher')
-        self.publisher_ = self.create_publisher(CompressedImage, 'image_raw', qos_profile_sensor_data)
+        self.publisher_ = self.create_publisher(CompressedImage, 'image_raw', 10)
         self.cap = cv2.VideoCapture('/dev/sensors/webcam')
         self.bridge = CvBridge()
         self.timer = self.create_timer(0.2, self.timer_callback)

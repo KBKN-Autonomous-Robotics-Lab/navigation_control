@@ -10,6 +10,8 @@ import easyocr
 import re
 import tkinter as tk
 from threading import Thread
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import CompressedImage
 
 # YOLOv8 モデルの読み込み
 model = YOLO('yolov8x.pt')
@@ -37,19 +39,21 @@ class StopSignDetection(Node):
     def __init__(self):
         super().__init__('stop_sign_detector')
         self.subscription = self.create_subscription(
-            Image,
+            CompressedImage,
             '/image_raw',
             self.image_callback,
-            1)
+            10)
         self.publisher = self.create_publisher(String, 'stop_sign_status', 10)
         self.bridge = CvBridge()
         self.reader = easyocr.Reader(['en'])
 
-    def image_callback(self, msg):
+    def image_callback(self, msg: CompressedImage):
         global recognized_text
 
         self.get_logger().info('Received image')
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        np_arr = np.frombuffer(msg.data, np.uint8)        
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        #cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
         status, raw_text, stop_sign_img = self.detect_stop_sign(cv_image)
 
