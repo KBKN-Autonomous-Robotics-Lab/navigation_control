@@ -74,6 +74,20 @@ class GPSWaypointManager(Node):
             #(42.4007568,-83.5314816), # waypoint 10
             #(42.4008276,-83.531481),  # waypoint 11
             #(42.4009164,-83.5314876)  # waypoint 12 goal autonav
+            
+            #(42.4009188,-83.531346),  # waypoint  0 autonav yobi
+            #(42.40098,-83.5313508),   # waypoint  1
+            #(42.4009788,-83.5314744), # waypoint  2
+            #(42.400977,-83.5316148),  # waypoint  3
+            #(0), # waypoint  4
+            #(0), # waypoint  5
+            #(0), # waypoint  6
+            #(0), # waypoint  7
+            #(42.4007526,-83.5316082), # waypoint  8
+            #(42.4007562,-83.531475),  # waypoint  9
+            #(42.4007628,-83.5313478), # waypoint 10
+            #(42.4008246,-83.5313418), # waypoint 11
+            #(42.4009152,-83.5313436)  # waypoint 12 goal autonav yobi
         ]        
         self.selfdrive_point = np.array([
                                     [  7.033100176667772, 0.08274034687780049, 0.0], # waypoint  0 selfdrive
@@ -100,10 +114,18 @@ class GPSWaypointManager(Node):
                                     [ 21.434249536317843,  1.4065867276276431, 0.0]  # waypoint goal selfdrive
                                     ])
         self.first_point = np.array([
-                                    [0.0, 0.0, 0.0],
+                                    #[17.0804080112078, 0.8274040980095129, 0.0], # waypoint 0 qualification
+                                    #[17.526959660260776, 9.763368540639547, 0.0], # waypoint 1
+                                    #[16.41060157894189, 18.69933209559049, 0.0], # waypoint 2
+                                    #[-0.1116226498476147, 17.954656032059653, 0.0], # waypoint 3
+                                    #[-23.33192845492907, 16.630794290177384, 0.0], # waypoint 4
+                                    #[-23.66684449903005, 8.356767162695558, 0.0], # waypoint 5
+                                    #[-22.773761483667965, -0.41370135909791217, 0.0], # waypoint 6
+                                    #[8.596013016246047, 0.3309615218752802, 0.0], # waypoint 7 goal qualification
+                                   
                                     [0.0, 0.0, 0.0]
-                                    ]) # 開始点など
-        self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など
+                                    ]) # 開始点など not reverse
+        self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など not reverse
         
         # selfdrive flag
         self.selfdrive_flag = 1 # autonav:0 selfdrive:1
