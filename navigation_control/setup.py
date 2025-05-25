@@ -16,7 +16,7 @@ setup(
         # アクションファイルのインストール
         (os.path.join('share', package_name), glob('action/*.action')),
         # launch
-        ('share/' + package_name + '/launch', ['launch/navigation_control.launch.xml']),
+        ('share/' + package_name + '/launch', ['launch/navigation_control.launch.xml','launch/human_lanechange.launch.xml','launch/human_stop.launch.xml','launch/pothole_detection.launch.xml','launch/stop_sign_detection.launch.xml','launch/tire_detection.launch.xml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

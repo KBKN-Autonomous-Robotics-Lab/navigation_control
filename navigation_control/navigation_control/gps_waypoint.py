@@ -33,24 +33,24 @@ class GPSWaypointManager(Node):
         self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
 
         self.ref_points = [
-            (35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
-            (35.42580947, 139.3138761), # waypoint 2
-            (35.42582577, 139.3139183), # waypoint 3
-            (35.42584276, 139.3139622), # waypoint 1
-            (35.42585746, 139.3139984), # waypoint 2
-            (35.42589533, 139.3139987), # waypoint 3
-            (35.42596721, 139.3139898), # waypoint 4
-            (35.42596884, 139.3139395)  # waypoint 3 nakaniwakokomade
+            #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
+            #(35.42580947, 139.3138761), # waypoint 2
+            #(35.42582577, 139.3139183), # waypoint 3
+            #(35.42584276, 139.3139622), # waypoint 1
+            #(35.42585746, 139.3139984), # waypoint 2
+            #(35.42589533, 139.3139987), # waypoint 3
+            #(35.42596721, 139.3139898), # waypoint 4
+            #(35.42596884, 139.3139395)  # waypoint 3 nakaniwakokomade
             #(35.4265706, 139.3141858), # waypoint 1 asupharutokokokara
             #(35.4266018, 139.3141984), # waypoint 2
             #(35.4266132, 139.314226),  # waypoint 3
             #(35.4266162, 139.3142614), # waypoint 4 asupharutokokomade
-            #(35.426273, 139.3141582),  # waypoint 1 higasikan kokokara
-            #(35.4262964, 139.3141756), # waypoint 2
-            #(35.4262772, 139.3141948), # waypoint 3
-            #(35.4262508, 139.3141906), # waypoint 4
-            #(35.4262238, 139.314187),  # waypoint 5
-            #(35.4262472, 139.3141576)  # waypoint 6 higasikan kokomade
+            (35.426273, 139.3141582),  # waypoint 1 higasikan kokokara
+            (35.4262964, 139.3141756), # waypoint 2
+            (35.4262772, 139.3141948), # waypoint 3
+            (35.4262508, 139.3141906), # waypoint 4
+            (35.4262238, 139.314187),  # waypoint 5
+            (35.4262472, 139.3141576)  # waypoint 6 higasikan kokomade
             
             #(42.4009806,-83.5310784), # waypoint 0 qualification
             #(42.400983,-83.5311432),  # waypoint 1
@@ -128,7 +128,7 @@ class GPSWaypointManager(Node):
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など not reverse
         
         # selfdrive flag
-        self.selfdrive_flag = 1 # autonav:0 selfdrive:1
+        self.selfdrive_flag = 0 # autonav:0 selfdrive:1
         
         # Tkinter
         self.root = tk.Tk()
@@ -167,6 +167,7 @@ class GPSWaypointManager(Node):
         self.waypoint_range_set = 3.5
         self.waypoints_local_set = 0;
         self.previous_status = None
+        self.determine_dist = 2.5 # waypoint range
         
         # Action
         self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClient
@@ -393,7 +394,8 @@ class GPSWaypointManager(Node):
         waypoint_dist = math.hypot(relative_x, relative_y)
         waypoint_theta = abs(waypoint_rad * 180 / math.pi)
 
-        determine_dist = 2.5 if abs(waypoint_theta) > 90 else 2.5
+        # determine_dist = 1.5 if abs(waypoint_theta) > 90 else 1.5
+        determine_dist = self.determine_dist
 
         #check if the waypoint reached
         if waypoint_dist < determine_dist:
