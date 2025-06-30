@@ -59,15 +59,15 @@ class IGVCDetection(Node):
         self.get_logger().info(f'Published human status: {human_status}')
         self.get_logger().info(f'Published stopsign status: {stopsign_status}')
         
-        if tire_img is not None:
-            cv2.imshow('Tire Detection', tire_img)
-            cv2.waitKey(1)  # イメージウィンドウ更新
-        if human_img is not None:
-            cv2.imshow('Human Detection', human_img)
-            cv2.waitKey(1)  # イメージウィンドウ更新
-        if stop_sign_img is not None:
-            cv2.imshow('Stop Sign Detection', stop_sign_img)
-            cv2.waitKey(1)  # イメージウィンドウ更新
+        #if tire_img is not None:
+        #    cv2.imshow('Tire Detection', tire_img)
+        #    cv2.waitKey(1)  # イメージウィンドウ更新
+        #if human_img is not None:
+        #    cv2.imshow('Human Detection', human_img)
+        #    cv2.waitKey(1)  # イメージウィンドウ更新
+        #if stop_sign_img is not None:
+        #    cv2.imshow('Stop Sign Detection', stop_sign_img)
+        #    cv2.waitKey(1)  # イメージウィンドウ更新
 
     def detect_tire(self, image):
         # 推論実行（classes指定不要、self.model.classesで制御されている）
@@ -134,7 +134,7 @@ class IGVCDetection(Node):
 
                 # size and priority
                 # w > 50 h > 470 -> stop 5feet , w > 50 h > 240 -> change lane 10feet
-                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 240): # width , height -> pixel
+                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 200): # width , height -> pixel
                     cropped_img = result.orig_img[y1:y2, x1:x2]
                     return cropped_img    
 

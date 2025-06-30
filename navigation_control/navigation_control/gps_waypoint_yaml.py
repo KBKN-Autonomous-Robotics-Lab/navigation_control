@@ -29,9 +29,9 @@ class GPSWaypointManager(Node):
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
 
-        self.init_lat = 42.4008888
-        self.init_lon = -83.5310724
-        self.init_theta = 0.0
+        self.init_lat = 42.4009836
+        self.init_lon = -83.131391
+        self.init_theta = 270.0
         
         self.ref_points = [
             #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
@@ -52,29 +52,31 @@ class GPSWaypointManager(Node):
             #(35.4262508, 139.3141906),  # waypoint 4
             #(35.4262238, 139.314187),   # waypoint 5
             #(35.4262472, 139.3141576)   # waypoint 6 higasikan kokomade
-            
-            #(42.4009488, -83.5314714), # waypoint  0 selfdrive
-            #(42.4009818, -83.531451),  # waypoint  1
-            #(42.4009758, -83.5313694), # waypoint  2
-            #(42.4009422, -83.531361),  # waypoint  3
-            #(42.4009194, -83.5313334), # waypoint  4
-            #(42.4008762, -83.5313316), # waypoint  5
-            #(42.4008582, -83.5313532), # waypoint  6
-            #(42.4007976, -83.5313532), # waypoint  7
-            #(42.4007622, -83.5313538), # waypoint  8
-            #(42.4007592, -83.531412),  # waypoint  9
-            #(42.4007562, -83.5314834), # waypoint 10
-            #(42.4007574, -83.5315272), # waypoint 11
-            #(42.4007616, -83.5315872), # waypoint 12
-            #(42.4008366, -83.5316052), # waypoint 13
-            #(42.40086, -83.5316286),   # waypoint 14
-            #(42.400905, -83.5316322),  # waypoint 15
-            #(42.4009206, -83.5316088), # waypoint 16
-            #(42.4009692, -83.5316016), # waypoint 17
-            #(42.4009752, -83.5315482), # waypoint 18
-            #(42.4009764, -83.5314954), # waypoint 19
-            #(42.4010046, -83.5314792), # waypoint 20
-            #(42.4010262, -83.531481)   # waypoint goal selfdrive
+                        
+            (42.4010034,-83.1299594), # waypoint  0 selfdrive
+            (42.4010286,-83.1299276),  # waypoint  1
+            (42.4010238,-83.1298562), # waypoint  2
+            (42.4009938,-83.1298478),  # waypoint  3
+            (42.4009638,-83.1298196), # waypoint  4
+            (42.400923,-83.1298166), # waypoint  5
+            (42.4008906,-83.1298424), # waypoint  6
+            (42.4008294,-83.12984), # waypoint  7
+            (42.400797,-83.1298406), # waypoint  8
+            (42.4007916,-83.1299282),  # waypoint  9
+            (42.4007922,-83.129963), # waypoint 10
+            (42.400791,-83.1300164), # waypoint 11
+            (42.4007916,-83.1300782), # waypoint 12
+            (42.4008534,-83.130095), # waypoint 13
+            (42.4008906,-83.1301172),   # waypoint 14
+            (42.400929,-83.1301202),  # waypoint 15
+            (42.4009614,-83.1300962), # waypoint 16
+            (42.401013,-83.130092), # waypoint 17
+            (42.4010142,-83.1300254), # waypoint 18
+            (42.4010208,-83.129969), # waypoint 19
+            (42.4010544,-83.1299738), # waypoint 20
+            (42.4010742,-83.129975),   # waypoint goal selfdrive
+            (42.4010934,-83.1299774)   # waypoint goal2 selfdrive
+            #(42.4011054,83.1299798)   # waypoint goal3 yobi selfdrive
             
             #(42.4009188,-83.531346),  # waypoint  0 autonav yobi
             #(42.40098,-83.5313508),   # waypoint  1
@@ -89,15 +91,34 @@ class GPSWaypointManager(Node):
             #(42.4007628,-83.5313478), # waypoint 10
             #(42.4008246,-83.5313418), # waypoint 11
             #(42.4009152,-83.5313436)  # waypoint 12 goal autonav yobi
-            
-            (42.4009806,-83.5310784), # waypoint 0 qualification
-            (42.400983,-83.5311432),  # waypoint 1
-            (42.400977,-83.531208),   # waypoint 2
-            (42.4008882,-83.5312026), # waypoint 3
-            (42.4007634,-83.531193),  # waypoint 4
-            (42.4007616,-83.531133),  # waypoint 5
-            (42.4007664,-83.5310694), # waypoint 6
-            (42.400935,-83.5310748)   # waypoint 7 goal qualification
+            #(42.4009032,-83.5312044), # waypoint 0 qualification
+            #(42.4009824,-83.5312026),  # waypoint 1
+            #(42.4009866,-83.5310664),   # waypoint 2
+            #(42.4009866,-83.5309344), # waypoint 3
+            #(42.4009026,-83.5309332),  # waypoint 4
+            #(42.4008312,-83.530932),  # waypoint 5
+            #(42.400767,-83.5309272) # waypoint 6 goal qualification
+            #(42.4009806,-83.5310784), # waypoint 0 qualification
+            #(42.400983,-83.5311432),  # waypoint 1
+            #(42.400977,-83.531208),   # waypoint 2
+            #(42.4008882,-83.5312026), # waypoint 3
+            #(42.4007634,-83.531193),  # waypoint 4
+            #(42.4007616,-83.531133),  # waypoint 5
+            #(42.4007664,-83.5310694), # waypoint 6
+            #(42.400935,-83.5310748)   # waypoint 7 goal qualification
+            #(42.4009746,-83.1316094),  # waypoint  0 autonav
+            #(42.4009188,-83.1316196), # waypoint  1
+            #(42.400875,-83.1316172), # waypoint  2
+            #(42.4008048,-83.131616), # waypoint  3
+            #(42.400758,-83.1315986), # waypoint  4
+            #(42.400755,-83.1314978), # waypoint  5
+            #(42.4007592,-83.1313388), # waypoint  6
+            #(42.400836,-83.1313418), # waypoint 7
+            #(42.40092,-83.1313454),   # waypoint 8 
+            #(42.4009836,-83.131391), # waypoint  10
+            #(42.4009842,-83.1314852), # waypoint  11
+            #(42.4009782,-83.1316208),  # waypoint  12
+            #(42.4009188,-83.1316196) # waypoint  13 goal autonav
         ]        
         self.first_point = np.array([[0.0, 0.0, 0.0],
                                     #[10.0, 0.0, 0.0],

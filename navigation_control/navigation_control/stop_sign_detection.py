@@ -64,9 +64,9 @@ class StopSignDetection(Node):
         # GUI words
         recognized_text = raw_text if raw_text else "No sign"
 
-        if stop_sign_img is not None:
-            cv2.imshow('Detected Stop Sign', stop_sign_img)
-            cv2.waitKey(1)
+        #if stop_sign_img is not None:
+        #    cv2.imshow('Detected Stop Sign', stop_sign_img)
+        #    cv2.waitKey(1)
         
     def detect_stop_sign(self, image):
         results = model.predict(image, classes=[11])

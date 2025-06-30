@@ -23,7 +23,7 @@ class TireDetection(Node):
             self.image_callback,
             10)
         self.odom_sub = self.create_subscription(
-            Odometry, '/odom/wheel_imu', self.odom_callback, 1)
+            Odometry, '/fusion/odom', self.odom_callback, 1)
         
         self.publisher = self.create_publisher(String, 'tire_status', 10)
         self.pc_publisher = self.create_publisher(PointCloud2, '/tire_points', 1)

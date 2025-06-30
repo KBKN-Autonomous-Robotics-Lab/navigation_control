@@ -15,16 +15,16 @@ from sensor_msgs.msg import CompressedImage
 class PotholeDetector(Node):
 
     def __init__(self):
-        super().__init__('pothole_detector')
+        super().__init__('white_line_detector')
         self.subscription = self.create_subscription(
             CompressedImage, '/image_raw', self.listener_callback, 10)
         self.odom_sub = self.create_subscription(
-            Odometry, '/fusion/odom', self.odom_callback, 1)
-        self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 1)
+            Odometry, '/odom/wheel_imu', self.odom_callback, 1)
+        #self.pc_publisher = self.create_publisher(PointCloud2, '/pothole_points', 1)
         self.bridge = CvBridge()
         self.robot_pose = (0.0, 0.0, 0.0)  # (x, y, yaw)
         self.points_buffer = deque()
-        self.publish_timer = self.create_timer(0.2, self.publish_accumulated_pointcloud)
+        #self.publish_timer = self.create_timer(0.2, self.publish_accumulated_pointcloud)
         self.lifetime_sec = 20.0
 
     def odom_callback(self, msg):
@@ -34,59 +34,93 @@ class PotholeDetector(Node):
         self.robot_pose = (pos.x, pos.y, yaw)
 
     def listener_callback(self, msg: CompressedImage):
-        np_arr = np.frombuffer(msg.data, np.uint8)        
+        np_arr = np.frombuffer(msg.data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        
-        #frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
         blur = cv2.GaussianBlur(frame, (5, 5), 0)
 
-        lower_white = np.array([200, 200, 200])
+        # 白色の抽出
+        lower_white = np.array([100, 100, 100])
         upper_white = np.array([255, 255, 255])
-        mask = cv2.inRange(frame, lower_white, upper_white)
+        white_mask = cv2.inRange(frame, lower_white, upper_white)
+        
+        # yellowの抽出
+        lower_yellow = np.array([0, 100, 100])
+        upper_yellow = np.array([80, 255, 255])
+        yellow_mask = cv2.inRange(frame, lower_yellow, upper_yellow)
+        
 
         kernel = np.ones((5, 5), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
+        white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_CLOSE, kernel)
+        yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
+        yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        now = self.get_clock().now()
-        all_points = []
 
-        for cnt in contours:
-            if len(cnt) < 5 or cv2.contourArea(cnt) < 200:
+        # 輪郭抽出
+        white_contours, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        yellow_contours, _ = cv2.findContours(yellow_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+
+        img_h, img_w = frame.shape[:2]
+
+        for cnt in white_contours:
+            #area = cv2.contourArea(cnt)
+            #if area < 500:
+            #    continue
+
+            # 回転を含む外接矩形
+            rect = cv2.minAreaRect(cnt)
+            (cx, cy), (w, h), angle = rect
+            
+            if cy < img_h / 2:
                 continue
 
-            ellipse = cv2.fitEllipse(cnt)
-            (cx, cy), (major, minor), angle = ellipse
-            aspect_ratio = max(major, minor) / min(major, minor)
-            is_horizontal = major < minor and (80 < angle < 110)
+            # アスペクト比計算
+            #if w < h:
+            #    aspect_ratio = h / w if w != 0 else 0
+            #else:
+            #    aspect_ratio = w / h if h != 0 else 0
 
-            if is_horizontal and 3.0 < aspect_ratio < 5.0 and cy > frame.shape[0] * 0.8:
-                cv2.ellipse(frame, ellipse, (0, 255, 0), 2)
-                cv2.putText(frame, f"{aspect_ratio:.2f}", (int(cx), int(cy)), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
-                cv2.putText(frame, f"{angle:.1f} deg", (int(cx), int(cy) + 20), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            # 縦長判定 & 十分な大きさ
+            #if aspect_ratio > 2.0: # and max(w, h) > img_h * 0.5:
+                # 矩形の4頂点を取得
+            #box = cv2.boxPoints(rect)
+            #box = np.int0(box)
+            # draw green point white line 
+            cv2.drawContours(frame, [cnt], 0, (0, 0, 255), cv2.FILLED)
+        
+        for cnt in yellow_contours:
+            #area = cv2.contourArea(cnt)
+            #if area < 500:
+            #    continue
 
-                self.get_logger().info(f"Pothole at: ({int(cx)}, {int(cy)})")
-                img_h, img_w = frame.shape[:2]
+            # 回転を含む外接矩形
+            rect = cv2.minAreaRect(cnt)
+            (cx, cy), (w, h), angle = rect
+            
+            if cy < img_h / 2:
+                continue
 
-                local_points = []
-                points_list = cv2.ellipse2Poly((int(cx), int(cy)), (int(major/2), int(minor/2)), int(angle), 0, 360, 10)
-                for px, py in points_list:
-                    x = 1.9 + (img_h - py) * 0.001
-                    y = - (px - img_w / 2) * 0.001
-                    z = 0.0
-                    gx, gy = transform_point_to_global(x, y, self.robot_pose)
-                    local_points.append((gx, gy, z))
+            # アスペクト比計算
+            #if w < h:
+            #    aspect_ratio = h / w if w != 0 else 0
+            #else:
+            #    aspect_ratio = w / h if h != 0 else 0
 
-                all_points.extend(local_points)
+            # 縦長判定 & 十分な大きさ
+            #if aspect_ratio > 2.0: # and max(w, h) > img_h * 0.5:
+                # 矩形の4頂点を取得
+            #box = cv2.boxPoints(rect)
+            #box = np.int0(box)
+            # draw green point white line 
+            cv2.drawContours(frame, [cnt], 0, (0, 255, 0), cv2.FILLED)
 
-        if all_points:
-            self.points_buffer.append((now, all_points))
 
-        cv2.imshow("Detected Potholes", frame)
+        cv2.imshow("Detected Lane Lines", frame)
         cv2.waitKey(1)
+
+
 
     def publish_accumulated_pointcloud(self):
         now = self.get_clock().now()

@@ -37,9 +37,9 @@ class HumanDetection(Node):
         self.publisher.publish(String(data=status))
         self.get_logger().info(f'Published human status: {status}')
         
-        if human_img is not None:
-            cv2.imshow('human Detection', human_img)
-            cv2.waitKey(1)  # イメージウィンドウ更新
+        #if human_img is not None:
+        #    cv2.imshow('human Detection', human_img)
+        #    cv2.waitKey(1)  # イメージウィンドウ更新
 
     def detect_human(self, image):
         # 推論実行（classes指定不要、self.model.classesで制御されている）
@@ -63,9 +63,13 @@ class HumanDetection(Node):
 
                 # size and priority
                 # w > 50 h > 470 -> stop 5feet , w > 50 h > 240 -> change lane 10feet
-                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 240): # width , height -> pixel
+                if cls_id == 0 and conf >= 0.5 and (w > 50 and h > 200): # width , height -> pixel
                     cropped_img = result.orig_img[y1:y2, x1:x2]
-                    return cropped_img
+                    h_cropped, w_cropped = cropped_img.shape[:2]
+                    y_start = h_cropped // 7
+                    y_end = int(h_cropped - (h_cropped / 1.8))
+                    trimmed_img = cropped_img[y_start:y_end, :]
+                    return trimmed_img
 
         return None
         
