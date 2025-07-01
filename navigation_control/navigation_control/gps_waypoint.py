@@ -18,6 +18,8 @@ from std_msgs.msg import Int32
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseWithCovariance
+import os
+import yaml
 
 class GPSWaypointManager(Node):
     def __init__(self):
@@ -33,7 +35,20 @@ class GPSWaypointManager(Node):
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
 
         self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
+        
+        # Waypoint YAMLファイルを読み込む
+        waypoint_map_yaml_path_name = "kbkn_maps/waypoints/hosei/2025/nakaniwa.yaml" # waypoint yamlの名前
+        py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
+        waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
 
+        # YAML ファイル読み込み
+        with open(waypoint_map_yaml_file_path, 'r') as yaml_file:
+            waypoint_map_yaml_data = yaml.safe_load(yaml_file)
+
+        # YAML の 'gps_points' をロード
+        self.gps_points = waypoint_map_yaml_data.get('gps_points', [])
+        self.get_logger().info(f"Loaded {len(self.gps_points)} gps_points from YAML.")
+             
         self.ref_points = [
             #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
             #(35.42580947, 139.3138761), # waypoint 2
@@ -363,7 +378,7 @@ class GPSWaypointManager(Node):
         
         points=[] # list
         
-        for i, (ido, keido) in enumerate(self.ref_points):     
+        for i, (ido, keido) in enumerate(self.gps_points):     
             # %math.pi/180
             d_ido = ido - ido0
             self.get_logger().info(f"d_ido: {d_ido}")
