@@ -48,7 +48,11 @@ class GPSWaypointManager(Node):
             waypoint_map_yaml_data = yaml.safe_load(yaml_file)
 
         # YAML の 'gps_points' をロード
-        self.gps_points = waypoint_map_yaml_data.get('gps_points', [])
+        yaml_points = waypoint_map_yaml_data.get('gps_points', [])
+        self.gps_points = [point[:2] for point in yaml_points]
+        #print(self.gps_points)
+        self.offset_points = [point[2:4] for point in yaml_points]
+        #print(self.offset_points)
         self.get_logger().info(f"Loaded {len(self.gps_points)} gps_points from YAML.")
                    
         self.xy_point = np.array([
@@ -323,8 +327,8 @@ class GPSWaypointManager(Node):
 
             degree_to_radian = math.pi / 180
             r_theta = theta * degree_to_radian
-            h_x = math.cos(r_theta) * gps_x - math.sin(r_theta) * gps_y
-            h_y = math.sin(r_theta) * gps_x + math.cos(r_theta) * gps_y
+            h_x = math.cos(r_theta) * gps_x - math.sin(r_theta) * gps_y + self.offset_points[i][0]
+            h_y = math.sin(r_theta) * gps_x + math.cos(r_theta) * gps_y + self.offset_points[i][1]
             point = np.array([h_y, -h_x, 0.0])
             #point = np.array([-h_y, h_x, 0.0])
             # point = (h_y, -h_x)
