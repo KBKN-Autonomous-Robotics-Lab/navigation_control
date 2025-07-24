@@ -128,7 +128,7 @@ class GPSWaypointManager(Node):
         self.waypoint_range_set = 3.5
         self.waypoints_local_set = 0;
         self.previous_status = None
-        self.determine_dist = 2.5 # waypoint range
+        self.determine_dist = 4.5 # waypoint range
         
         self.waypoints_initial_set = 0
         
