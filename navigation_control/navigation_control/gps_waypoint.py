@@ -39,7 +39,7 @@ class GPSWaypointManager(Node):
         self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
         
         # Waypoint YAMLファイルを読み込む
-        waypoint_map_yaml_path_name = "kbkn_maps/waypoints/hosei/2025/nakaniwa.yaml" # waypoint yamlの名前
+        waypoint_map_yaml_path_name = "kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml" # waypoint yamlの名前
         py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
         waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
 
@@ -83,7 +83,9 @@ class GPSWaypointManager(Node):
                                     #[10.0, 0.0, 0.0],
                                     #[10.0, -10.0, 0.0],
                                     #[0.0, -10.0, 0.0],
-                                    [0.0, 0.0, 0.0]
+                                    [36.140734819754655, -0.8834488661177362, 0.0],
+                                    [37.408634641989984, 29.894732605158925, 0.0],
+                                    [40.12559357800447, 98.70060841165846, 0.0]
                                     ]) # 開始点など not reverse
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など not reverse
         
@@ -98,7 +100,6 @@ class GPSWaypointManager(Node):
         # ラベルの追加
         self.instruction_label = tk.Label(self.root, text='waypointを反転したい場合は"r"キーを押してください', font=('Helvetica', 14))
         self.instruction_label.pack(pady=10)
-
         qos_profile = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -240,8 +241,8 @@ class GPSWaypointManager(Node):
         #pose_array = self.current_waypoint_msg(self.waypoints_array[:, self.current_waypoint], 'map')
         #self.waypoint_pub.publish(pose_array)
         
-        full_waypoints = np.concatenate([self.first_point], axis=0)
-        self.waypoints_array = full_waypoints.T
+        #full_waypoints = np.concatenate([self.first_point], axis=0)
+        #self.waypoints_array = full_waypoints.T
         
         self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")    
         self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")    
