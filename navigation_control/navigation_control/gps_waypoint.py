@@ -40,20 +40,28 @@ class GPSWaypointManager(Node):
         
         # Waypoint YAMLファイルを読み込む
         waypoint_map_yaml_path_name = "kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml" # waypoint yamlの名前
+        waypoint_map_yaml_path_name_xy = "kbkn_maps/waypoints/tsukuba/2025/papa/IGVC_waypoints.yaml" # waypoint yamlの名前
         py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
         waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
+        waypoint_map_yaml_file_path_xy = os.path.join(py_path, waypoint_map_yaml_path_name_xy) # パスの連結
 
         # YAML ファイル読み込み
         with open(waypoint_map_yaml_file_path, 'r') as yaml_file:
             waypoint_map_yaml_data = yaml.safe_load(yaml_file)
+        
+        with open(waypoint_map_yaml_file_path_xy, 'r') as yaml_file_xy:
+            waypoint_map_yaml_data_xy = yaml.safe_load(yaml_file_xy)
 
         # YAML の 'gps_points' をロード
         yaml_points = waypoint_map_yaml_data.get('gps_points', [])
+        yaml_points_xy = waypoint_map_yaml_data_xy.get('waypoints', [])
         self.gps_points = [point[:2] for point in yaml_points]
         #print(self.gps_points)
         self.offset_points = [point[2:4] for point in yaml_points]
         #print(self.offset_points)
         self.get_logger().info(f"Loaded {len(self.gps_points)} gps_points from YAML.")
+        
+        self.xy_points = [point[:3] for point in yaml_points_xy]
                    
         self.xy_point = np.array([
                                     [  7.033100176667772, 0.08274034687780049, 0.0], # waypoint  0 selfdrive
@@ -85,7 +93,28 @@ class GPSWaypointManager(Node):
                                     #[0.0, -10.0, 0.0],
                                     [36.140734819754655, -0.8834488661177362, 0.0],
                                     [37.408634641989984, 29.894732605158925, 0.0],
-                                    [40.12559357800447, 98.70060841165846, 0.0]
+                                    [40.12559357800447, 98.70060841165846, 0.0],
+                                    [22.738402571956986, 100.37334098143074, 0.0],
+                                    [21.742252012598104, 95.24351486541595, 0.0],
+                                    [5.62287924600169, 96.47019632482544, 0.0],
+                                    [-16.65446203625677, 98.58904511102466, 0.0],
+                                    [-49.97992983334127, 101.71162479796313, 0.0],
+                                    [-64.46928877619067, 106.84151578983143, 0.0],
+                                    [-68.99698107707997, 66.6952158885138, 0.0],
+                                    [-71.35129747779649, 33.46336104581571, 0.0],
+                                    [-58.67321374077533, 35.80513701305104, 0.0],
+                                    [-40.92385325143306, 28.556554397915498, 0.0],
+                                    [-21.27279771234066, 19.189214824486196, 0.0],
+                                    [6.437861909616563, 16.624350027678755, 0.0],
+                                    [7.705673658274892, 22.980723651903094, 0.0],
+                                    [35.3257754935187, 19.52378779169897, 0.0],
+                                    [37.408634641989984, 29.894732605158925, 0.0],
+                                    [65.20985506107382, 25.65723753082236, 0.0],
+                                    [102.24802024786584, 30.452619035616696, 0.0],
+                                    [147.25520070684954, 26.661470426352555, 0.0],
+                                    [179.4031750723584, 24.320002113439024, 0.0],
+                                    [233.9188703474771, 20.52924507812411, 0.0],
+                                    [272.4057402088137, 13.169903810703433, 0.0]
                                     ]) # 開始点など not reverse
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など not reverse
         
@@ -241,8 +270,8 @@ class GPSWaypointManager(Node):
         #pose_array = self.current_waypoint_msg(self.waypoints_array[:, self.current_waypoint], 'map')
         #self.waypoint_pub.publish(pose_array)
         
-        #full_waypoints = np.concatenate([self.first_point], axis=0)
-        #self.waypoints_array = full_waypoints.T
+        full_waypoints = np.concatenate([self.xy_points], axis=0)
+        self.waypoints_array = full_waypoints.T
         
         self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")    
         self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")    
