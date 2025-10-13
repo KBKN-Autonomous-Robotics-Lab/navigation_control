@@ -31,15 +31,21 @@ class GPSWaypointManager(Node):
         self.waypoints = queue.Queue()
         self.count = 0
         self.theta = None
+        
+        # set parameter (launch can change this parameter)
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
         self.declare_parameter('waypoint_start_index', 0) # start waypoint number
         self.waypoint_start_index = self.get_parameter('waypoint_start_index').get_parameter_value().integer_value
-
-        self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
+        self.declare_parameter('odom', '/fusion/odom')
+        odom_topic = self.get_parameter('odom').get_parameter_value().string_value
+        self.declare_parameter('waypoint_path', 'kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml')
+        waypoint_path = self.get_parameter('waypoint_path').get_parameter_value().string_value
         
+        self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
+                
         # Waypoint YAMLファイルを読み込む
-        waypoint_map_yaml_path_name = "kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml" # waypoint yamlの名前
+        waypoint_map_yaml_path_name = waypoint_path # waypoint yamlの名前
         waypoint_map_yaml_path_name_xy = "kbkn_maps/waypoints/tsukuba/2025/papa/IGVC_waypoints.yaml" # waypoint yamlの名前
         py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
         waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
@@ -64,58 +70,9 @@ class GPSWaypointManager(Node):
         self.xy_points = [point[:3] for point in yaml_points_xy]
                    
         self.xy_point = np.array([
-                                    [  7.033100176667772, 0.08274034687780049, 0.0], # waypoint  0 selfdrive
-                                    [ 13.173118908065078,  -2.730432114149303, 0.0], # waypoint  1
-                                    [  12.05675923470665,  -13.98312139287495, 0.0], # waypoint  2
-                                    [  5.805107434278974, -15.141482523390598, 0.0], # waypoint  3
-                                    [ 1.5629253772056577, -18.947534882827163, 0.0], # waypoint  4
-                                    [ -6.474890741995338, -19.195749415863894, 0.0], # waypoint  5
-                                    [ -9.823980594169749,  -16.21709637533306, 0.0], # waypoint  6
-                                    [-21.099213573820954, -16.217088734954327, 0.0], # waypoint  7
-                                    [ -27.68572091210563,  -16.13434404488772, 0.0], # waypoint  8
-                                    [-28.243907283937006,   -8.10854194576664, 0.0], # waypoint  9
-                                    [ -28.80208795226711,  1.7375446631183613, 0.0], # waypoint 10
-                                    [-28.578814313348136,   7.777580943140201, 0.0], # waypoint 11
-                                    [-27.797356645921774,  16.051603747084968, 0.0], # waypoint 12
-                                    [-13.842875804579132,   18.53382131829375, 0.0], # waypoint 13
-                                    [ -9.489063203498068,  21.760695953281353, 0.0], # waypoint 14
-                                    [-1.1163428067660146,  22.257145472542515, 0.0], # waypoint 15
-                                    [  1.786198429362834,  19.030275388330832, 0.0], # waypoint 16
-                                    [ 10.828760671234289,  18.037398270328385, 0.0], # waypoint 17
-                                    [  11.94511899957441,   10.67350681442107, 0.0], # waypoint 18
-                                    [ 12.168388136731767,  3.3923549106952664, 0.0], # waypoint 19
-                                    [   17.4153188087425,  1.1583653470352688, 0.0], # waypoint 20                                  
-                                    [ 21.434249536317843,  1.4065867276276431, 0.0]  # waypoint goal selfdrive
+                                    [0.0, 0.0, 0.0]
                                     ])
-        self.first_point = np.array([
-                                    #[10.0, 0.0, 0.0],
-                                    #[10.0, -10.0, 0.0],
-                                    #[0.0, -10.0, 0.0],
-                                    [36.140734819754655, -0.8834488661177362, 0.0],
-                                    [37.408634641989984, 29.894732605158925, 0.0],
-                                    [40.12559357800447, 98.70060841165846, 0.0],
-                                    [22.738402571956986, 100.37334098143074, 0.0],
-                                    [21.742252012598104, 95.24351486541595, 0.0],
-                                    [5.62287924600169, 96.47019632482544, 0.0],
-                                    [-16.65446203625677, 98.58904511102466, 0.0],
-                                    [-49.97992983334127, 101.71162479796313, 0.0],
-                                    [-64.46928877619067, 106.84151578983143, 0.0],
-                                    [-68.99698107707997, 66.6952158885138, 0.0],
-                                    [-71.35129747779649, 33.46336104581571, 0.0],
-                                    [-58.67321374077533, 35.80513701305104, 0.0],
-                                    [-40.92385325143306, 28.556554397915498, 0.0],
-                                    [-21.27279771234066, 19.189214824486196, 0.0],
-                                    [6.437861909616563, 16.624350027678755, 0.0],
-                                    [7.705673658274892, 22.980723651903094, 0.0],
-                                    [35.3257754935187, 19.52378779169897, 0.0],
-                                    [37.408634641989984, 29.894732605158925, 0.0],
-                                    [65.20985506107382, 25.65723753082236, 0.0],
-                                    [102.24802024786584, 30.452619035616696, 0.0],
-                                    [147.25520070684954, 26.661470426352555, 0.0],
-                                    [179.4031750723584, 24.320002113439024, 0.0],
-                                    [233.9188703474771, 20.52924507812411, 0.0],
-                                    [272.4057402088137, 13.169903810703433, 0.0]
-                                    ]) # 開始点など not reverse
+        self.first_point = np.array([[0.0, 0.0, 0.0]]) # 開始点など not reverse
         self.last_point = np.array([[0.0, 0.0, 0.0]])   # 終了点など not reverse
         
         # xy flag
@@ -139,7 +96,7 @@ class GPSWaypointManager(Node):
         self.goal_sub = self.create_subscription(PoseStamped, '/goal_pose', self.goal_pose_callback, qos_profile)
         self.initial_sub = self.create_subscription(PoseWithCovarianceStamped, '/initialpose', self.initial_pose_callback, qos_profile)
         self.human_sub = self.create_subscription(String, '/human_status', self.human_callback, 10) # lanechange 
-        self.odom_sub = self.create_subscription(nav_msgs.Odometry, '/fusion/odom', self.get_odom, qos_profile)
+        self.odom_sub = self.create_subscription(nav_msgs.Odometry, odom_topic, self.get_odom, qos_profile)
         self.waypoint_pub = self.create_publisher(geometry_msgs.PoseArray, 'current_waypoint', qos_profile)
         self.waypoint_number_pub = self.create_publisher(Int32, 'waypoint_number', qos_profile)
         self.waypoint_path_publisher = self.create_publisher(nav_msgs.Path, 'waypoint_path', qos_profile) 
