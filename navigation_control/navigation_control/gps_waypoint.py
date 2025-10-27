@@ -46,7 +46,7 @@ class GPSWaypointManager(Node):
                 
         # Waypoint YAMLファイルを読み込む
         waypoint_map_yaml_path_name = waypoint_path # waypoint yamlの名前
-        waypoint_map_yaml_path_name_xy = "kbkn_maps/waypoints/tsukuba/2025/papa/IGVC_waypoints.yaml" # waypoint yamlの名前
+        waypoint_map_yaml_path_name_xy = "kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoints_xy.yaml" # waypoint yamlの名前
         py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
         waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
         waypoint_map_yaml_file_path_xy = os.path.join(py_path, waypoint_map_yaml_path_name_xy) # パスの連結
