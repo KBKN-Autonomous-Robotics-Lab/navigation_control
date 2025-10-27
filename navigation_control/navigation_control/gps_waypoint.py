@@ -372,7 +372,10 @@ class GPSWaypointManager(Node):
         waypoint_theta = abs(waypoint_rad * 180 / math.pi)
 
         # determine_dist = 1.5 if abs(waypoint_theta) > 90 else 1.5
-        determine_dist = self.determine_dist
+        if 100 <= self.current_waypoint <= 109:
+            determine_dist = 1.5 
+        else:
+            determine_dist = self.determine_dist
 
         #check if the waypoint reached
         if waypoint_dist < determine_dist:
