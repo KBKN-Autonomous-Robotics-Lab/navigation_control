@@ -15,6 +15,7 @@ from rclpy.time import Time
 from rclpy.action import ActionClient
 from my_msgs.action import StopFlag  # Actionメッセージのインポート
 from std_msgs.msg import Int32
+import os
 import yaml
 
 class GPSWaypointManager(Node):
@@ -29,9 +30,30 @@ class GPSWaypointManager(Node):
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
 
-        self.init_lat = 42.4009836
-        self.init_lon = -83.131391
-        self.init_theta = 270.0
+        self.init_lat = 36.04974095972727
+
+        self.init_lon = 140.04593633886364
+        self.init_theta = 93.0
+        
+        self.declare_parameter('waypoint_path', 'kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml')
+        waypoint_path = self.get_parameter('waypoint_path').get_parameter_value().string_value
+        
+        # Waypoint YAMLファイルを読み込む
+        waypoint_map_yaml_path_name = waypoint_path # waypoint yamlの名前
+        py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
+        waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
+
+        # YAML ファイル読み込み
+        with open(waypoint_map_yaml_file_path, 'r') as yaml_file:
+            waypoint_map_yaml_data = yaml.safe_load(yaml_file)
+
+        # YAML の 'gps_points' をロード
+        yaml_points = waypoint_map_yaml_data.get('gps_points', [])
+        self.gps_points = [point[:2] for point in yaml_points]
+        #print(self.gps_points)
+        self.offset_points = [point[2:4] for point in yaml_points]
+        #print(self.offset_points)
+        self.get_logger().info(f"Loaded {len(self.gps_points)} gps_points from YAML.")
         
         self.ref_points = [
             #(35.42578984, 139.3138073), # waypoint 1 nakaniwakokokara
@@ -52,30 +74,60 @@ class GPSWaypointManager(Node):
             #(35.4262508, 139.3141906),  # waypoint 4
             #(35.4262238, 139.314187),   # waypoint 5
             #(35.4262472, 139.3141576)   # waypoint 6 higasikan kokomade
-                        
-            (42.4010034,-83.1299594), # waypoint  0 selfdrive
-            (42.4010286,-83.1299276),  # waypoint  1
-            (42.4010238,-83.1298562), # waypoint  2
-            (42.4009938,-83.1298478),  # waypoint  3
-            (42.4009638,-83.1298196), # waypoint  4
-            (42.400923,-83.1298166), # waypoint  5
-            (42.4008906,-83.1298424), # waypoint  6
-            (42.4008294,-83.12984), # waypoint  7
-            (42.400797,-83.1298406), # waypoint  8
-            (42.4007916,-83.1299282),  # waypoint  9
-            (42.4007922,-83.129963), # waypoint 10
-            (42.400791,-83.1300164), # waypoint 11
-            (42.4007916,-83.1300782), # waypoint 12
-            (42.4008534,-83.130095), # waypoint 13
-            (42.4008906,-83.1301172),   # waypoint 14
-            (42.400929,-83.1301202),  # waypoint 15
-            (42.4009614,-83.1300962), # waypoint 16
-            (42.401013,-83.130092), # waypoint 17
-            (42.4010142,-83.1300254), # waypoint 18
-            (42.4010208,-83.129969), # waypoint 19
-            (42.4010544,-83.1299738), # waypoint 20
-            (42.4010742,-83.129975),   # waypoint goal selfdrive
-            (42.4010934,-83.1299774)   # waypoint goal2 selfdrive
+             (35.42578984, 139.3138073), # waypoint 1
+             (35.4256634 , 139.3138006), # waypoint 2
+             (35.425667  , 139.3140178), # waypoint 3
+             (35.425673  , 139.3141882), # waypoint 4
+             (35.4259736 , 139.314187 ), # waypoint 5
+             (35.42596884, 139.3139395) # waypoint 6
+
+             #(36.0497352,140.0461766), # waypoint 1
+             #(36.0499008,140.046185), # waypoint 2
+             #(36.050271,140.046203), # waypoint 3
+             #(36.05028,140.0460878), # waypoint 4
+             #(36.0502524,140.0460812), # waypo4nt 5
+             #(36.050259,140.0459744), # waypoint 6
+             #(36.0502704,140.0458268), # waypoint 7
+             #(36.0502872,140.045606), # waypoint 8
+             #(36.0503148,140.04551), # waypoint 9
+             ##(36.0500988,140.04548), # waypoint 10
+             #(36.04992,140.0454644), # waypoint 11
+             #(36.0499326,140.0455484), # waypoint 12
+             #(36.0498936,140.045666), # waypoint 13
+             #(36.0498432,140.0457962), # waypoint 14
+             #(36.0498294,140.0459798), # waypoint 15
+             #(36.0498636,140.0459882), # waypoint 16
+             #(36.049845,140.0461712), # waypoint 17
+             #(36.0499008,140.046185), # waypoint 18
+             #(36.049878,140.0463692), # waypoint 19
+             #(36.0499038,140.0466146), # waypoint 20 kakunin goal
+             #(36.0498834,140.0469128), # waypoint 21
+             #(36.0498708,140.0471258), # waypoint 22
+             #(36.0498504,140.047487), # waypoint 23
+             #(36.0498108,140.047742) # waypoint 24
+            #(42.4010034,-83.1299594), # waypoint  0 selfdrive
+            #(42.4010286,-83.1299276),  # waypoint  1
+            #(42.4010238,-83.1298562), # waypoint  2
+            #(42.4009938,-83.1298478),  # waypoint  3
+            #(42.4009638,-83.1298196), # waypoint  4
+            #(42.400923,-83.1298166), # waypoint  5
+            #(42.4008906,-83.1298424), # waypoint  6
+            #(42.4008294,-83.12984), # waypoint  7
+            #(42.400797,-83.1298406), # waypoint  8
+            #(42.4007916,-83.1299282),  # waypoint  9
+            #(42.4007922,-83.129963), # waypoint 10
+            #(42.400791,-83.1300164), # waypoint 11
+            #(42.4007916,-83.1300782), # waypoint 12
+            #(42.4008534,-83.130095), # waypoint 13
+            #(42.4008906,-83.1301172),   # waypoint 14
+            #(42.400929,-83.1301202),  # waypoint 15
+            #(42.4009614,-83.1300962), # waypoint 16
+            #(42.401013,-83.130092), # waypoint 17
+            #(42.4010142,-83.1300254), # waypoint 18
+            #(42.4010208,-83.129969), # waypoint 19
+            #(42.4010544,-83.1299738), # waypoint 20
+            #(42.4010742,-83.129975),   # waypoint goal selfdrive
+            #(42.4010934,-83.1299774)   # waypoint goal2 selfdrive
             #(42.4011054,83.1299798)   # waypoint goal3 yobi selfdrive
             
             #(42.4009188,-83.531346),  # waypoint  0 autonav yobi
@@ -171,7 +223,7 @@ class GPSWaypointManager(Node):
         
         points=[] # list
         
-        for i, (ido, keido) in enumerate(self.ref_points):     
+        for i, (ido, keido) in enumerate(self.gps_points):     
             # %math.pi/180
             d_ido = ido - ido0
             self.get_logger().info(f"d_ido: {d_ido}")

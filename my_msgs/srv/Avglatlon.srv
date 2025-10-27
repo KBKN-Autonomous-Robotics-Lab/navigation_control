@@ -1,5 +1,8 @@
 float64 avg_lat
 float64 avg_lon
 float64 theta
+float64 current_lat
+float64 current_lon
+float64 current_theta
 ---
 bool success
