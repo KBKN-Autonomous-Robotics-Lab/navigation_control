@@ -20,6 +20,9 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseWithCovariance
 import os
 import yaml
+from visualization_msgs.msg import Marker, MarkerArray
+import std_msgs.msg as std_msgs
+import struct
 
 class GPSWaypointManager(Node):
     def __init__(self):
@@ -80,12 +83,10 @@ class GPSWaypointManager(Node):
         
         # Tkinter
         self.root = tk.Tk()
-        self.root.title("GPS Waypoint Manager")
-        self.root.bind("<Key>", self.key_input_handler)
-        self.reversed_flag = False
-        # ラベルの追加
-        self.instruction_label = tk.Label(self.root, text='waypointを反転したい場合は"r"キーを押してください', font=('Helvetica', 14))
-        self.instruction_label.pack(pady=10)
+        self.root.title("Waypoint Yaml")
+        self.button = tk.Button(self.root, text="Waypoint Yaml", command=self.button_callback)
+        self.button.pack()
+
         qos_profile = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
             reliability=QoSReliabilityPolicy.RELIABLE,
@@ -101,6 +102,8 @@ class GPSWaypointManager(Node):
         self.waypoint_number_pub = self.create_publisher(Int32, 'waypoint_number', qos_profile)
         self.waypoint_path_publisher = self.create_publisher(nav_msgs.Path, 'waypoint_path', qos_profile) 
         self.timer = self.create_timer(0.1, self.waypoint_manager)
+        self.marker_pub = self.create_publisher(Marker, 'waypoint_markers', qos_profile)
+        self.label_marker_pub = self.create_publisher(MarkerArray, 'waypoint_labels', qos_profile)
 
         self.current_waypoint = 0
         self.stop_flag = 0
@@ -163,16 +166,6 @@ class GPSWaypointManager(Node):
     def result_callback(self, future):
         result = future.result().result
         self.get_logger().info(f"Result: {result.sum}")
-
-    def key_input_handler(self, event):
-        key = event.char.lower()
-        if key == 'r':
-            self.get_logger().info("キー入力: 'r' を受け取りました。waypointを反転します。")
-            self.ref_points.reverse()
-            self.reversed_flag = True
-        elif key == 'a':
-            self.get_logger().info("キー入力: 'a' を受け取りました。通常順で実行します。")
-            self.reversed_flag = False
     
 
     def initial_pose_callback(self, msg):
@@ -229,6 +222,8 @@ class GPSWaypointManager(Node):
         
         full_waypoints = np.concatenate([self.xy_points], axis=0)
         self.waypoints_array = full_waypoints.T
+        self.current_waypoint = self.waypoint_start_index
+        self.get_logger().info(f"Start index set: {self.current_waypoint}")
         
         self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")    
         self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")    
@@ -276,9 +271,9 @@ class GPSWaypointManager(Node):
         for i, (ido, keido) in enumerate(self.gps_points):     
             # %math.pi/180
             d_ido = ido - ido0
-            self.get_logger().info(f"d_ido: {d_ido}")
+            #self.get_logger().info(f"d_ido: {d_ido}")
             d_keido = keido - keido0
-            self.get_logger().info(f"d_keido: {d_keido}")
+            #self.get_logger().info(f"d_keido: {d_keido}")
             rd_ido = d_ido * pi180
             rd_keido = d_keido * pi180
             r_ido = ido * pi180
@@ -319,11 +314,32 @@ class GPSWaypointManager(Node):
             point = np.array([h_y, -h_x, 0.0])
             #point = np.array([-h_y, h_x, 0.0])
             # point = (h_y, -h_x)
-            self.get_logger().info(f"point: {point}")         
+            #self.get_logger().info(f"point: {point}")         
             points.append(point)
 
         return points
 
+    def button_callback(self):
+        gps_points = np.array(self.gps_points)
+        init_lat = gps_points[0,0]
+        init_lon = gps_points[0,1]
+        theta = 93.0
+        print("test")
+        print(init_lat)
+        print(init_lon)
+        GPSxy = self.conversion(init_lat, init_lon, theta)
+        gps_np = np.array(GPSxy)
+
+        if self.xy_flag == 1:
+            full_waypoints = np.concatenate([self.xy_point], axis=0)
+        else:
+            full_waypoints = np.concatenate([gps_np], axis=0) #self.first_point, gps_np, self.last_point
+        self.waypoints_array = full_waypoints.T
+        self.get_logger().info(f"Start waypoints_array: {self.waypoints_array}")
+
+        self.current_waypoint = self.waypoint_start_index
+        self.get_logger().info(f"Start index set: {self.current_waypoint}")
+    
     def receive_avg_gps_callback(self, request, response):
         avg_lat, avg_lon, theta = request.avg_lat, request.avg_lon, request.theta
         if theta is None:
@@ -331,11 +347,13 @@ class GPSWaypointManager(Node):
             response.success = False
             return response
 
-        GPSxy = self.conversion(avg_lat, avg_lon, theta)
+        gps_points = np.array(self.gps_points)
+        init_lat = gps_points[0,0]
+        init_lon = gps_points[0,1]
+        print(init_lat)
+        print(init_lon)
+        GPSxy = self.conversion(init_lat, init_lon, theta)
         gps_np = np.array(GPSxy)
-        if self.reversed_flag:
-            self.first_point[:, 1] *= -1
-            self.last_point[:, 1] *= -1
 
         if self.xy_flag == 1:
             full_waypoints = np.concatenate([self.xy_point], axis=0)
@@ -394,6 +412,10 @@ class GPSWaypointManager(Node):
         self.waypoint_number_pub.publish(Int32(data=self.current_waypoint))
         waypoint_path = path_msg(self.waypoints_array, self.get_clock().now().to_msg(), 'odom')
         self.waypoint_path_publisher.publish(waypoint_path) 
+        try:
+            self.publish_waypoint_markers()
+        except Exception as e:
+            self.get_logger().warn(f"publish_waypoint_markers error: {e}")
 
     def current_waypoint_msg(self, waypoint, set_frame_id):
         pose_array = geometry_msgs.PoseArray()
@@ -409,6 +431,74 @@ class GPSWaypointManager(Node):
 
     def run(self):
         self.root.mainloop()
+
+    def publish_waypoint_markers(self):
+        if self.waypoints_array is None:
+            return
+        try:
+            npts = self.waypoints_array.shape[1]
+        except Exception:
+            return
+
+        # --- SPHERE_LIST Marker ---
+        marker = Marker()
+        marker.header.frame_id = 'odom'
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = 'waypoints'
+        marker.id = 0
+        marker.type = Marker.SPHERE_LIST
+        marker.action = Marker.ADD
+
+        # 球の直径
+        marker.scale.x = 0.4
+        marker.scale.y = 0.4
+        marker.scale.z = 0.4
+
+        # color RGBA
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        marker.color.a = 0.9
+
+        pts = []
+        for i in range(npts):
+            p = geometry_msgs.Point()
+            p.x = float(self.waypoints_array[0, i])
+            p.y = float(self.waypoints_array[1, i])
+            if self.waypoints_array.shape[0] > 2:
+                p.z = float(self.waypoints_array[2, i])
+            else:
+                p.z = 0.0
+            pts.append(p)
+        marker.points = pts
+        self.marker_pub.publish(marker)
+
+        # --- Label (TEXT_VIEW_FACING) を MarkerArray で出す ---
+        label_array = MarkerArray()
+        now = self.get_clock().now().to_msg()
+        for i in range(npts):
+            label = Marker()
+            label.header.frame_id = 'odom'
+            label.header.stamp = now
+            label.ns = 'waypoint_labels'
+            label.id = i
+            label.type = Marker.TEXT_VIEW_FACING
+            label.action = Marker.ADD
+            label.pose.position.x = float(self.waypoints_array[0, i])
+            label.pose.position.y = float(self.waypoints_array[1, i])
+            if self.waypoints_array.shape[0] > 2:
+                label.pose.position.z = float(self.waypoints_array[2, i]) + 1.5
+            else:
+                label.pose.position.z = 0.6
+            label.scale.z = 0.7  # テキスト高さ
+            label.color.r = 1.0
+            label.color.g = 1.0
+            label.color.b = 1.0
+            label.color.a = 1.0
+            label.text = str(i)
+            label_array.markers.append(label)
+        self.label_marker_pub.publish(label_array)
+
 
 def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
     rad_x = math.radians(theta_x)
