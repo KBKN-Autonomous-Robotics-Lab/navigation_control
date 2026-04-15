@@ -23,6 +23,7 @@ import yaml
 from visualization_msgs.msg import Marker, MarkerArray
 import std_msgs.msg as std_msgs
 import struct
+import rclpy.duration
 
 class GPSWaypointManager(Node):
     def __init__(self):
@@ -42,14 +43,14 @@ class GPSWaypointManager(Node):
         self.waypoint_start_index = self.get_parameter('waypoint_start_index').get_parameter_value().integer_value
         self.declare_parameter('odom', '/fusion/odom')
         odom_topic = self.get_parameter('odom').get_parameter_value().string_value
-        self.declare_parameter('waypoint_path', 'kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml')
+        self.declare_parameter('waypoint_path', 'kbkn_maps/maps/tsukuba/2025/papa/tsukuba_waypoint.yaml')
         waypoint_path = self.get_parameter('waypoint_path').get_parameter_value().string_value
         
         self.avg_gps_service = self.create_service(Avglatlon, 'send_avg_gps', self.receive_avg_gps_callback)
                 
         # Waypoint YAMLファイルを読み込む
         waypoint_map_yaml_path_name = waypoint_path # waypoint yamlの名前
-        waypoint_map_yaml_path_name_xy = "kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoints_xy.yaml" # waypoint yamlの名前
+        waypoint_map_yaml_path_name_xy = "kbkn_maps/maps/tsukuba/2025/papa/tsukuba_waypoints_xy.yaml" # waypoint yamlの名前
         py_path = "/home/ubuntu/ros2_ws/src/"#os.path.dirname(os.path.abspath(__file__)) # 実行ファイルのディレクトリ名
         waypoint_map_yaml_file_path = os.path.join(py_path, waypoint_map_yaml_path_name) # パスの連結
         waypoint_map_yaml_file_path_xy = os.path.join(py_path, waypoint_map_yaml_path_name_xy) # パスの連結
@@ -65,9 +66,7 @@ class GPSWaypointManager(Node):
         yaml_points = waypoint_map_yaml_data.get('gps_points', [])
         yaml_points_xy = waypoint_map_yaml_data_xy.get('waypoints', [])
         self.gps_points = [point[:2] for point in yaml_points]
-        #print(self.gps_points)
         self.offset_points = [point[2:4] for point in yaml_points]
-        #print(self.offset_points)
         self.get_logger().info(f"Loaded {len(self.gps_points)} gps_points from YAML.")
         
         self.xy_points = [point[:3] for point in yaml_points_xy]
@@ -102,8 +101,12 @@ class GPSWaypointManager(Node):
         self.waypoint_number_pub = self.create_publisher(Int32, 'waypoint_number', qos_profile)
         self.waypoint_path_publisher = self.create_publisher(nav_msgs.Path, 'waypoint_path', qos_profile) 
         self.timer = self.create_timer(0.1, self.waypoint_manager)
+
+        # Marker publisher
         self.marker_pub = self.create_publisher(Marker, 'waypoint_markers', qos_profile)
         self.label_marker_pub = self.create_publisher(MarkerArray, 'waypoint_labels', qos_profile)
+        # rviz再接続対策：1Hzで再publish（確定済みの場合のみ）
+        self.marker_timer = self.create_timer(1.0, self.republish_markers_if_ready)
 
         self.current_waypoint = 0
         self.stop_flag = 0
@@ -119,8 +122,10 @@ class GPSWaypointManager(Node):
         self.waypoints_local_set = 0;
         self.previous_status = None
         self.determine_dist = 4.5 # waypoint range
-        
         self.waypoints_initial_set = 0
+
+        # waypointが確定したらTrueにする（それまでmarkerは出さない）
+        self.waypoints_ready = False
         
         # Action
         self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClient
@@ -209,21 +214,15 @@ class GPSWaypointManager(Node):
             self.waypoints_local_set = 1;
         else:
             self.waypoints_array = np.insert(self.waypoints_array, len(self.waypoints_array[0,:]), xyz.T, axis=1)
-            
-        #self.waypoints_array = np.array([[xyz[0], xyz[1], xyz[2]], [next_xyz[0], next_xyz[1], next_xyz[2]]])
-        #self.waypoints_array = np.array([[xyz[0], next_xyz[0]],[xyz[1], next_xyz[1]], [xyz[2], next_xyz[2]]])
-        #self.waypoints_array = np.stack((xyz,next_xyz))
 
-        # クォータニオン → ヨー角（Z軸の回転）に変換
-        #angle = math.atan2(2.0 * (qw * qz), 1.0 - 2.0 * (qz * qz))
-        
-        #pose_array = self.current_waypoint_msg(self.waypoints_array[:, self.current_waypoint], 'map')
-        #self.waypoint_pub.publish(pose_array)
-        
         full_waypoints = np.concatenate([self.xy_points], axis=0)
         self.waypoints_array = full_waypoints.T
         self.current_waypoint = self.waypoint_start_index
         self.get_logger().info(f"Start index set: {self.current_waypoint}")
+
+        # waypointが確定したのでmarkerを表示
+        self.waypoints_ready = True
+        self.publish_waypoint_markers()
         
         self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")    
         self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")    
@@ -247,8 +246,6 @@ class GPSWaypointManager(Node):
         return yaw
     
     def conversion(self, avg_lat, avg_lon, theta):
-        #ido = self.ref_points[0]
-        #keido = self.ref_points[1]
         ido0 = avg_lat
         keido0 = avg_lon
 
@@ -269,11 +266,8 @@ class GPSWaypointManager(Node):
         points=[] # list
         
         for i, (ido, keido) in enumerate(self.gps_points):     
-            # %math.pi/180
             d_ido = ido - ido0
-            #self.get_logger().info(f"d_ido: {d_ido}")
             d_keido = keido - keido0
-            #self.get_logger().info(f"d_keido: {d_keido}")
             rd_ido = d_ido * pi180
             rd_keido = d_keido * pi180
             r_ido = ido * pi180
@@ -305,16 +299,11 @@ class GPSWaypointManager(Node):
                 (5-18*(t**2)+(t**4)+14*(ai**2)-58*(ai**2)*(t**2))/120
             gps_x = self.Position_magnification * m0 * (x1 + x2 + x3)
 
-            # point = (gps_x, gps_y)Not match
-
             degree_to_radian = math.pi / 180
             r_theta = theta * degree_to_radian
             h_x = math.cos(r_theta) * gps_x - math.sin(r_theta) * gps_y - self.offset_points[i][1]
             h_y = math.sin(r_theta) * gps_x + math.cos(r_theta) * gps_y + self.offset_points[i][0]
             point = np.array([h_y, -h_x, 0.0])
-            #point = np.array([-h_y, h_x, 0.0])
-            # point = (h_y, -h_x)
-            #self.get_logger().info(f"point: {point}")         
             points.append(point)
 
         return points
@@ -333,12 +322,16 @@ class GPSWaypointManager(Node):
         if self.xy_flag == 1:
             full_waypoints = np.concatenate([self.xy_point], axis=0)
         else:
-            full_waypoints = np.concatenate([gps_np], axis=0) #self.first_point, gps_np, self.last_point
+            full_waypoints = np.concatenate([gps_np], axis=0)
         self.waypoints_array = full_waypoints.T
         self.get_logger().info(f"Start waypoints_array: {self.waypoints_array}")
 
         self.current_waypoint = self.waypoint_start_index
         self.get_logger().info(f"Start index set: {self.current_waypoint}")
+
+        # waypointが確定したのでmarkerを表示
+        self.waypoints_ready = True
+        self.publish_waypoint_markers()
     
     def receive_avg_gps_callback(self, request, response):
         avg_lat, avg_lon, theta = request.avg_lat, request.avg_lon, request.theta
@@ -358,11 +351,15 @@ class GPSWaypointManager(Node):
         if self.xy_flag == 1:
             full_waypoints = np.concatenate([self.xy_point], axis=0)
         else:
-            full_waypoints = np.concatenate([gps_np], axis=0) #self.first_point, gps_np, self.last_point
+            full_waypoints = np.concatenate([gps_np], axis=0)
         self.waypoints_array = full_waypoints.T
 
         self.current_waypoint = self.waypoint_start_index
         self.get_logger().info(f"Start index set: {self.current_waypoint}")
+
+        # waypointが確定したのでmarkerを表示
+        self.waypoints_ready = True
+        self.publish_waypoint_markers()
         
         response.success = True
         return response
@@ -376,10 +373,6 @@ class GPSWaypointManager(Node):
         self.theta_x, self.theta_y, self.theta_z = 0, 0, yaw * 180 / math.pi
 
     def waypoint_manager(self):
-        #self.get_logger().info(f"test: {self.current_waypoint}")
-        #if self.waypoints_array is None or self.stop_flag:
-        #    return
-            
         position_x, position_y = self.position_x, self.position_y
         relative_x = self.waypoints_array[0, self.current_waypoint] - position_x
         relative_y = self.waypoints_array[1, self.current_waypoint] - position_y
@@ -389,7 +382,6 @@ class GPSWaypointManager(Node):
         waypoint_dist = math.hypot(relative_x, relative_y)
         waypoint_theta = abs(waypoint_rad * 180 / math.pi)
 
-        # determine_dist = 1.5 if abs(waypoint_theta) > 90 else 1.5
         if 100 <= self.current_waypoint <= 109:
             determine_dist = 1.5 
         else:
@@ -397,12 +389,9 @@ class GPSWaypointManager(Node):
 
         #check if the waypoint reached
         if waypoint_dist < determine_dist:
-            #self.current_waypoint += 1
             if self.current_waypoint < len(self.waypoints_array[0,:])-1:
                 self.current_waypoint += 1
             else:
-                # goal:stopをtrueにしてアクションを再送信
-                #a=1;
                 self.stop = True
                 self.get_logger().info("Stop flag reset to True")
                 self.send_action_request()
@@ -412,10 +401,6 @@ class GPSWaypointManager(Node):
         self.waypoint_number_pub.publish(Int32(data=self.current_waypoint))
         waypoint_path = path_msg(self.waypoints_array, self.get_clock().now().to_msg(), 'odom')
         self.waypoint_path_publisher.publish(waypoint_path) 
-        try:
-            self.publish_waypoint_markers()
-        except Exception as e:
-            self.get_logger().warn(f"publish_waypoint_markers error: {e}")
 
     def current_waypoint_msg(self, waypoint, set_frame_id):
         pose_array = geometry_msgs.PoseArray()
@@ -435,69 +420,70 @@ class GPSWaypointManager(Node):
     def publish_waypoint_markers(self):
         if self.waypoints_array is None:
             return
-        try:
-            npts = self.waypoints_array.shape[1]
-        except Exception:
-            return
+        
+        npts = self.waypoints_array.shape[1]  # waypointの総数
+        now = self.get_clock().now().to_msg()
 
-        # --- SPHERE_LIST Marker ---
-        marker = Marker()
-        marker.header.frame_id = 'odom'
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = 'waypoints'
-        marker.id = 0
-        marker.type = Marker.SPHERE_LIST
-        marker.action = Marker.ADD
+        # ① SPHERE_LIST：全waypointを球で表示
+        # SPHERE_LISTは「1つのMarkerメッセージで複数の球をまとめて送れる」型
+        sphere = Marker()
+        sphere.header.frame_id = 'odom'
+        sphere.header.stamp = now
+        sphere.ns = 'waypoints'
+        sphere.id = 0
+        sphere.type = Marker.SPHERE_LIST
+        sphere.action = Marker.ADD
+        sphere.scale.x = 0.4          # 球の直径[m]
+        sphere.scale.y = 0.4
+        sphere.scale.z = 0.4
+        sphere.color.r = 0.0
+        sphere.color.g = 1.0          # 緑色
+        sphere.color.b = 0.0
+        sphere.color.a = 0.9          # 透明度
+        # lifetime=0で明示的に消すまで永続表示
+        sphere.lifetime = rclpy.duration.Duration(seconds=0).to_msg()
 
-        # 球の直径
-        marker.scale.x = 0.4
-        marker.scale.y = 0.4
-        marker.scale.z = 0.4
-
-        # color RGBA
-        marker.color.r = 0.0
-        marker.color.g = 1.0
-        marker.color.b = 0.0
-        marker.color.a = 0.9
-
-        pts = []
         for i in range(npts):
             p = geometry_msgs.Point()
             p.x = float(self.waypoints_array[0, i])
             p.y = float(self.waypoints_array[1, i])
-            if self.waypoints_array.shape[0] > 2:
-                p.z = float(self.waypoints_array[2, i])
-            else:
-                p.z = 0.0
-            pts.append(p)
-        marker.points = pts
-        self.marker_pub.publish(marker)
+            p.z = 0.0
+            sphere.points.append(p)
+        
+        self.marker_pub.publish(sphere)
 
-        # --- Label (TEXT_VIEW_FACING) を MarkerArray で出す ---
+        # ② TEXT_VIEW_FACING：各waypointの上に番号を表示
+        # MarkerArrayは「複数のMarkerをまとめて1トピックで送る」型
         label_array = MarkerArray()
-        now = self.get_clock().now().to_msg()
+
         for i in range(npts):
             label = Marker()
             label.header.frame_id = 'odom'
             label.header.stamp = now
             label.ns = 'waypoint_labels'
-            label.id = i
-            label.type = Marker.TEXT_VIEW_FACING
+            label.id = i                          # 各テキストに固有ID
+            label.type = Marker.TEXT_VIEW_FACING  # 常にカメラ方向を向くテキスト
             label.action = Marker.ADD
             label.pose.position.x = float(self.waypoints_array[0, i])
             label.pose.position.y = float(self.waypoints_array[1, i])
-            if self.waypoints_array.shape[0] > 2:
-                label.pose.position.z = float(self.waypoints_array[2, i]) + 1.5
-            else:
-                label.pose.position.z = 0.6
-            label.scale.z = 0.7  # テキスト高さ
+            label.pose.position.z = 0.8           # 球の少し上に表示
+            label.scale.z = 0.5                   # テキストの高さ[m]
             label.color.r = 1.0
             label.color.g = 1.0
-            label.color.b = 1.0
+            label.color.b = 1.0                   # 白色
             label.color.a = 1.0
-            label.text = str(i)
+            label.lifetime = rclpy.duration.Duration(seconds=0).to_msg()
+            label.text = str(i)                   # waypoint番号を文字列で
             label_array.markers.append(label)
+
         self.label_marker_pub.publish(label_array)
+
+    def republish_markers_if_ready(self):
+        # waypointが確定していなければ何もしない
+        # 確定していれば1Hzで再publishしてrviz再接続に備える
+        if not self.waypoints_ready:
+            return
+        self.publish_waypoint_markers()
 
 
 def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
@@ -516,8 +502,6 @@ def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
                       [ math.sin(rad_z),  math.cos(rad_z), 0],
                       [               0,                0, 1]])
     rot_matrix = rot_z.dot(rot_y.dot(rot_x))
-    #print(f"rot_matrix ={rot_matrix}")
-    #print(f"pointcloud ={pointcloud.shape}")
     rot_pointcloud = rot_matrix.dot(pointcloud)
     return rot_pointcloud, rot_matrix
 
@@ -567,4 +551,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
