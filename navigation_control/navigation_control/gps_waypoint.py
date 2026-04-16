@@ -24,6 +24,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 import std_msgs.msg as std_msgs
 import struct
 from std_msgs.msg import Bool
+import rclpy.duration
 
 def excel_like_degmin(dd: float) -> float:
     """
@@ -43,7 +44,6 @@ def excel_like_degmin(dd: float) -> float:
     frac = x - deg
     minutes = frac * 60.0
     return sign * (deg + minutes / 100.0)
-
 
 class GPSWaypointManager(Node):
     def __init__(self):
@@ -175,15 +175,14 @@ class GPSWaypointManager(Node):
             Bool, '/goal_reached', 10
         ) 
         self.goal_publisher = False
-        #######   
+        
         self.manager_timer = self.create_timer(0.1, self.waypoint_manager)
-
-        self.marker_pub = self.create_publisher(
-            Marker, 'waypoint_markers', qos_profile
-        )
-        self.label_marker_pub = self.create_publisher(
-            MarkerArray, 'waypoint_labels', qos_profile
-        )
+        
+        # Marker publisher
+        self.marker_pub = self.create_publisher(Marker, 'waypoint_markers', qos_profile)
+        self.label_marker_pub = self.create_publisher(MarkerArray, 'waypoint_labels', qos_profile)
+        # rviz再接続対策：1Hzで再publish（確定済みの場合のみ）
+        self.marker_timer = self.create_timer(1.0, self.republish_markers_if_ready)
 
         self.current_waypoint = 0
         self.stop_flag = 0
@@ -197,7 +196,19 @@ class GPSWaypointManager(Node):
         self.waypoint_range_set = 3.5
         self.waypoints_local_set = 0
         self.previous_status = None
-        self.determine_dist = 1.5  # waypoint range
+        self.determine_dist = 4.5 # waypoint range
+        self.waypoints_initial_set = 0
+
+        # waypointが確定したらTrueにする（それまでmarkerは出さない）
+        self.waypoints_ready = False
+        
+        # goal flag
+        self.goal_published = False
+        
+        # Action
+        self.action_client = ActionClient(self, StopFlag, 'stop_flag')  # ActionClient
+        self.action_sent = False  
+        self.stop = False # True=stop, False=go
 
         self.waypoints_initial_set = 0
 
@@ -280,25 +291,28 @@ class GPSWaypointManager(Node):
         next_x = xyz[0] + xyz_range[0]
         next_y = xyz[1] + xyz_range[1]
         next_z = xyz[2] + xyz_range[2]
-        next_xyz = np.vstack((next_x, next_y, next_z))
-
+        next_xyz = np.vstack((next_x,next_y,next_z))
+        
         if self.waypoints_local_set == 0:
-            self.current_waypoint = 0
-            self.waypoints_array = xyz
-            self.waypoints_local_set = 1
+            self.current_waypoint = 0;
+            self.waypoints_array = xyz;
+            self.waypoints_local_set = 1;
         else:
-            self.waypoints_array = np.insert(
-                self.waypoints_array,
-                len(self.waypoints_array[0, :]),
-                xyz.T,
-                axis=1
-            )
+            self.waypoints_array = np.insert(self.waypoints_array, len(self.waypoints_array[0,:]), xyz.T, axis=1)
 
+        #full_waypoints = np.concatenate([self.xy_points], axis=0)
+        #self.waypoints_array = full_waypoints.T
+        self.current_waypoint = self.waypoint_start_index
         self.get_logger().info(f"Start index set: {self.current_waypoint}")
-        self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")
-        self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")
-        self.get_logger().info(f"xyz_range:{xyz_range}")
 
+        # waypointが確定したのでmarkerを表示
+        self.waypoints_ready = True
+        self.publish_waypoint_markers()
+        
+        self.get_logger().info(f"Received goal: x={x:.3f}, y={y:.3f}, yaw={yaw:.3f} deg")    
+        self.get_logger().info(f"self.waypoints_array:{self.waypoints_array}")    
+        self.get_logger().info(f"xyz_range:{xyz_range}")    
+    
     def human_callback(self, msg):
         human_status = msg.data
 
@@ -400,17 +414,8 @@ class GPSWaypointManager(Node):
             r_theta = theta * degree_to_radian
 
             # 元コードのoffset処理をそのまま維持
-            h_x = (
-                math.cos(r_theta) * gps_x
-                - math.sin(r_theta) * gps_y
-                + self.offset_points[i][0]
-            )
-            h_y = (
-                math.sin(r_theta) * gps_x
-                + math.cos(r_theta) * gps_y
-                + self.offset_points[i][1]
-            )
-
+            h_x = math.cos(r_theta) * gps_x - math.sin(r_theta) * gps_y - self.offset_points[i][1]
+            h_y = math.sin(r_theta) * gps_x + math.cos(r_theta) * gps_y + self.offset_points[i][0]
             point = np.array([h_y, -h_x, 0.0])
             points.append(point)
 
@@ -442,6 +447,10 @@ class GPSWaypointManager(Node):
             ##tuika##
             ########
             self.get_logger().info(f"Start index set: {self.current_waypoint}")
+            
+            # waypointが確定したのでmarkerを表示
+            self.waypoints_ready = True
+            self.publish_waypoint_markers()
 
             self.initialize = True
 
@@ -453,8 +462,12 @@ class GPSWaypointManager(Node):
             response.success = False
             return response
 
-        # ここは service で受け取った基準値を使う形に修正
-        GPSxy = self.conversion(avg_lat, avg_lon, theta)
+        gps_points = np.array(self.gps_points)
+        init_lat = gps_points[0,0]
+        init_lon = gps_points[0,1]
+        print(init_lat)
+        print(init_lon)
+        GPSxy = self.conversion(init_lat, init_lon, theta)
         gps_np = np.array(GPSxy)
 
         if self.xy_flag == 1:
@@ -463,10 +476,13 @@ class GPSWaypointManager(Node):
             full_waypoints = np.concatenate([gps_np], axis=0)
 
         self.waypoints_array = full_waypoints.T
+
         self.current_waypoint = self.waypoint_start_index
-        ##tuika
-        ######
         self.get_logger().info(f"Start index set: {self.current_waypoint}")
+
+        # waypointが確定したのでmarkerを表示
+        self.waypoints_ready = True
+        self.publish_waypoint_markers()
 
         response.success = True
         return response
@@ -571,70 +587,70 @@ class GPSWaypointManager(Node):
     def publish_waypoint_markers(self):
         if self.waypoints_array is None:
             return
+        
+        npts = self.waypoints_array.shape[1]  # waypointの総数
+        now = self.get_clock().now().to_msg()
 
-        try:
-            npts = self.waypoints_array.shape[1]
-        except Exception:
-            return
+        # ① SPHERE_LIST：全waypointを球で表示
+        # SPHERE_LISTは「1つのMarkerメッセージで複数の球をまとめて送れる」型
+        sphere = Marker()
+        sphere.header.frame_id = 'odom'
+        sphere.header.stamp = now
+        sphere.ns = 'waypoints'
+        sphere.id = 0
+        sphere.type = Marker.SPHERE_LIST
+        sphere.action = Marker.ADD
+        sphere.scale.x = 0.4          # 球の直径[m]
+        sphere.scale.y = 0.4
+        sphere.scale.z = 0.4
+        sphere.color.r = 0.0
+        sphere.color.g = 1.0          # 緑色
+        sphere.color.b = 0.0
+        sphere.color.a = 0.9          # 透明度
+        # lifetime=0で明示的に消すまで永続表示
+        sphere.lifetime = rclpy.duration.Duration(seconds=0).to_msg()
 
-        marker = Marker()
-        marker.header.frame_id = 'odom'
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = 'waypoints'
-        marker.id = 0
-        marker.type = Marker.SPHERE_LIST
-        marker.action = Marker.ADD
-        marker.scale.x = 0.4
-        marker.scale.y = 0.4
-        marker.scale.z = 0.4
-        marker.color.r = 0.0
-        marker.color.g = 1.0
-        marker.color.b = 0.0
-        marker.color.a = 0.9
-
-        pts = []
         for i in range(npts):
             p = geometry_msgs.Point()
             p.x = float(self.waypoints_array[0, i])
             p.y = float(self.waypoints_array[1, i])
-            if self.waypoints_array.shape[0] > 2:
-                p.z = float(self.waypoints_array[2, i])
-            else:
-                p.z = 0.0
-            pts.append(p)
+            p.z = 0.0
+            sphere.points.append(p)
+        
+        self.marker_pub.publish(sphere)
 
-        marker.points = pts
-        self.marker_pub.publish(marker)
-
+        # ② TEXT_VIEW_FACING：各waypointの上に番号を表示
+        # MarkerArrayは「複数のMarkerをまとめて1トピックで送る」型
         label_array = MarkerArray()
-        now = self.get_clock().now().to_msg()
 
         for i in range(npts):
             label = Marker()
             label.header.frame_id = 'odom'
             label.header.stamp = now
             label.ns = 'waypoint_labels'
-            label.id = i
-            label.type = Marker.TEXT_VIEW_FACING
+            label.id = i                          # 各テキストに固有ID
+            label.type = Marker.TEXT_VIEW_FACING  # 常にカメラ方向を向くテキスト
             label.action = Marker.ADD
             label.pose.position.x = float(self.waypoints_array[0, i])
             label.pose.position.y = float(self.waypoints_array[1, i])
-
-            if self.waypoints_array.shape[0] > 2:
-                label.pose.position.z = float(self.waypoints_array[2, i]) + 1.5
-            else:
-                label.pose.position.z = 0.6
-
-            label.scale.z = 0.7
+            label.pose.position.z = 0.8           # 球の少し上に表示
+            label.scale.z = 0.5                   # テキストの高さ[m]
             label.color.r = 1.0
             label.color.g = 1.0
-            label.color.b = 1.0
+            label.color.b = 1.0                   # 白色
             label.color.a = 1.0
-            label.text = str(i)
+            label.lifetime = rclpy.duration.Duration(seconds=0).to_msg()
+            label.text = str(i)                   # waypoint番号を文字列で
             label_array.markers.append(label)
 
         self.label_marker_pub.publish(label_array)
 
+    def republish_markers_if_ready(self):
+        # waypointが確定していなければ何もしない
+        # 確定していれば1Hzで再publishしてrviz再接続に備える
+        if not self.waypoints_ready:
+            return
+        self.publish_waypoint_markers()
 
 def rotation_xyz(pointcloud, theta_x, theta_y, theta_z):
     rad_x = math.radians(theta_x)
