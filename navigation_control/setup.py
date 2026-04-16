@@ -48,6 +48,7 @@ setup(
         'tire_detection = navigation_control.tire_detection:main',
         'tire_control = navigation_control.tire_control:main',
         'IGVC_detection = navigation_control.IGVC_detection:main',
+        'take_picture = navigation_control.take_picture:main',
         ],
     },
 )

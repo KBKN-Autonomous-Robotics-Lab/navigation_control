@@ -20,13 +20,20 @@ class WaypointMonitor(Node):
         # publish /nav_state
         self.nav_state_publisher = self.create_publisher(Bool, '/nav_state', 10)
         self.create_timer(1, self.publish_nav_state)
-        
+        ####tuika##
+        self.goal_reached_subscriber = self.create_subscription(
+            Bool,
+            '/goal_reached',
+            self.goal_reached_callback,
+            10
+        )  
+        ######  
         # Tkinterウィンドウとボタンの設定
         self.root = tk.Tk()
         self.root.title("Waypoint Monitor Control")
         self.button = tk.Button(self.root, text="Resume", command=self.resume_action, width = 20, height = 5)
         self.button.pack()
-
+        self.goal_flag = 0;
     # サーバーにアクションを送信する関数
     def send_action_request(self):
         goal_msg = StopFlag.Goal()
@@ -66,9 +73,18 @@ class WaypointMonitor(Node):
     def result_callback(self, future):
         result = future.result().result
         self.get_logger().info(f"Result: {result.sum}")
-
+    ###tuika###
+    def goal_reached_callback(self, msg):
+        self.get_logger().info(f"/goal_reached receive: {msg.data}")
+        if msg.data:
+            self.get_logger().info("set nav_state=False due to goal")
+            self.goal_flag = 1
+            self.nav_state = False
+    #####        
     def publish_nav_state(self):
         # /nav_state publish
+        if self.goal_flag == 1:
+            self.nav_state = False
         msg = Bool()
         msg.data = self.nav_state
         self.nav_state_publisher.publish(msg)
@@ -76,6 +92,7 @@ class WaypointMonitor(Node):
     def resume_action(self):
         # ボタンを押したときにstopをFalseにしてアクションを再送信
         self.stop = False
+        self.goal_flag = 0
         self.get_logger().info("Stop flag reset to False")
         self.nav_state = True
         self.send_action_request()
@@ -99,4 +116,5 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
 
