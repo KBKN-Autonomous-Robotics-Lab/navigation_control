@@ -438,8 +438,8 @@ class GPSWaypointManager(Node):
             converted_lon = excel_like_degmin(float(init_lon))
             
             msg = NavSatFix()
-            msg.latitude = float(init_lat)
-            msg.longitude = float(init_lon)
+            msg.latitude = converted_lat
+            msg.longitude = converted_lon
             msg.altitude = 0.0
 
             self.init_gps_pub.publish(msg)
