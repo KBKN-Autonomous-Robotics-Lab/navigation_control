@@ -82,6 +82,11 @@ class GPSWaypointManager(Node):
             'waypoint_path',
             'kbkn_maps/waypoints/hosei/2025/nakaniwa.yaml'
         )
+        
+        # waypoint range
+        self.declare_parameter('determine_dist', 4.5)
+        self.determine_dist = self.get_parameter('determine_dist').get_parameter_value().double_value
+        
         waypoint_path = self.get_parameter(
             'waypoint_path'
         ).get_parameter_value().string_value
@@ -196,7 +201,7 @@ class GPSWaypointManager(Node):
         self.waypoint_range_set = 3.5
         self.waypoints_local_set = 0
         self.previous_status = None
-        self.determine_dist = 4.5 # waypoint range
+        #self.determine_dist = 4.5 # waypoint range
         self.waypoints_initial_set = 0
 
         # waypointが確定したらTrueにする（それまでmarkerは出さない）
