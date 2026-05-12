@@ -467,7 +467,7 @@ class GPSWaypointManager(Node):
             self.waypoints_array = full_waypoints.T
             self.get_logger().info(f"Start waypoints_array: {self.waypoints_array}")
 
-            self.current_waypoint = self.waypoint_start_inde
+            self.current_waypoint = self.waypoint_start_index
             self.get_logger().info(f"Start index set: {self.current_waypoint}")
             
             # waypointが確定したのでmarkerを表示
