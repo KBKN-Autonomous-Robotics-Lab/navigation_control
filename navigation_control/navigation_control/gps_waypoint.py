@@ -75,7 +75,7 @@ class GPSWaypointManager(Node):
             'waypoint_start_index'
         ).get_parameter_value().integer_value
 
-        self.declare_parameter('odom', '/odom/wheel_imu')
+        self.declare_parameter('odom', '/fusion/odom')
         odom_topic = self.get_parameter('odom').get_parameter_value().string_value
 
         self.declare_parameter(
@@ -179,8 +179,14 @@ class GPSWaypointManager(Node):
         self.goal_reached_publisher = self.create_publisher(
             Bool, '/goal_reached', 10
         ) 
+        self.init_gps_pub = self.create_publisher(
+    NavSatFix,
+    '/init_gps',
+    10
+        )
         self.goal_publisher = False
         
+
         self.manager_timer = self.create_timer(0.1, self.waypoint_manager)
         
         # Marker publisher
@@ -432,6 +438,24 @@ class GPSWaypointManager(Node):
             init_lat = gps_points[0, 0]
             init_lon = gps_points[0, 1]
             theta = 0.0
+            
+            converted_lat = excel_like_degmin(float(init_lat))
+            converted_lon = excel_like_degmin(float(init_lon))
+            
+            msg = NavSatFix()
+            msg.latitude = converted_lat
+            msg.longitude = converted_lon
+            msg.altitude = 0.0
+
+            self.init_gps_pub.publish(msg)
+
+            self.get_logger().info(
+                f"Published /init_gps:"
+                f"raw_lat={init_lat}, raw_lon={init_lon},"
+                f"converted_lat={converted_lat}, converted_lon={converted_lon}"
+            )
+                
+
 
             print("test")
             print(init_lat)
@@ -449,8 +473,6 @@ class GPSWaypointManager(Node):
             self.get_logger().info(f"Start waypoints_array: {self.waypoints_array}")
 
             self.current_waypoint = self.waypoint_start_index
-            ##tuika##
-            ########
             self.get_logger().info(f"Start index set: {self.current_waypoint}")
             
             # waypointが確定したのでmarkerを表示
@@ -481,7 +503,6 @@ class GPSWaypointManager(Node):
             full_waypoints = np.concatenate([gps_np], axis=0)
 
         self.waypoints_array = full_waypoints.T
-
         self.current_waypoint = self.waypoint_start_index
         self.get_logger().info(f"Start index set: {self.current_waypoint}")
 
