@@ -75,7 +75,7 @@ class GPSWaypointManager(Node):
             'waypoint_start_index'
         ).get_parameter_value().integer_value
 
-        self.declare_parameter('odom', '/odom/wheel_imu')
+        self.declare_parameter('odom', '/fusion/odom')
         odom_topic = self.get_parameter('odom').get_parameter_value().string_value
 
         self.declare_parameter(
