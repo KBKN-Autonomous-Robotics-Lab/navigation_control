@@ -21,9 +21,15 @@ set(action_files
 set(srv_files
   "srv/Avglatlon.srv"
 )
+
+set(msg_files
+  "msg/RoadsideInfo.msg"
+)
+
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${action_files}
   ${srv_files}
+  ${msg_files}
 )
 
 if(BUILD_TESTING)
