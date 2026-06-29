@@ -8,9 +8,14 @@ from my_msgs.msg import RoadsideInfo
 class RoadsideDetector(Node):
     def __init__(self):
         super().__init__("roadside_detector")
-        
-        # camera device
-        self.cap = cv2.VideoCapture("/dev/sensors/webcam")
+
+        # True: PNG画像を使用
+        # False: カメラを使用
+        self.use_test_image = True
+        self.test_image_path = "/home/ubuntu/ros2_ws/src/navigation_control/navigation_control/test/test1.png"
+
+        if not self.use_test_image:
+            self.cap = cv2.VideoCapture("/dev/sensors/webcam")
         
         # publisher
         self.roadside_pub = self.create_publisher(RoadsideInfo, "/roadside_info", 10)
@@ -28,18 +33,26 @@ class RoadsideDetector(Node):
         #############################################
         # Camera
         #############################################
-        ret, frame = self.cap.read()
+        if self.use_test_image:
 
-        if not ret:
-            self.get_logger().warn("Camera Error")
-            return
+            frame = cv2.imread(self.test_image_path)
+
+            if frame is None:
+                self.get_logger().error("Cannot load test image.")
+                return
+
+        else:
+            ret, frame = self.cap.read()
+            if not ret:
+                self.get_logger().warn("Camera Error")
+                return
 
         roi, mask = self.preprocess_image(frame)
 
         #############################################
         # Boundary Extraction
         #############################################
-        success, xs, ys, contour = self.extract_boundary_points(mask)
+        success, xs, ys, contour = self.extract_boundary_points(mask, roi)
         detected = self.detected
         boundary_distance = self.distance
         boundary_angle = self.angle
@@ -153,10 +166,15 @@ class RoadsideDetector(Node):
         #############################################
         # ROI
         #############################################
-
         h, w = frame.shape[:2]
+        front = frame[:, :w//2]
+        #front = frame[:, w//2:]
+        h, w = front.shape[:2]
+        #cv2.imshow("Front", front)
+        #cv2.imshow("Frame", frame)
+        print(f"width = {w}, height = {h}")
 
-        roi = frame[int(h * 0.55):h, :]
+        roi = front[int(h * 0.55):h, :]
 
         #############################################
         # HSV
@@ -227,7 +245,7 @@ class RoadsideDetector(Node):
 
         return roi, mask
 
-    def extract_boundary_points(self, mask):
+    def extract_boundary_points(self, mask, roi):
         """
         HSVマスクから車道側境界点を抽出する
 
@@ -290,7 +308,7 @@ class RoadsideDetector(Node):
 
             else:
 
-                boundary_points[y] = max(
+                boundary_points[y] = min(
                     boundary_points[y],
                     x
                 )
@@ -307,6 +325,15 @@ class RoadsideDetector(Node):
             [boundary_points[y] for y in ys],
             dtype=np.float32
         )
+        # 境界点を描画
+        for x, y in zip(xs, ys):
+            cv2.circle(
+                roi,
+                (int(x), int(y)),
+                2,
+                (0, 0, 255),   # 赤色
+                -1
+            )
 
         return True, xs, ys, contour
     
@@ -442,6 +469,20 @@ class RoadsideDetector(Node):
         )
 
         #############################################
+
+        ys_draw = np.arange(int(min(ys)), roi.shape[0])
+
+        xs_draw = np.polyval(coef, ys_draw)
+
+        for x, y in zip(xs_draw, ys_draw):
+
+            cv2.circle(
+                roi,
+                (int(x), int(y)),
+                1,
+                (255, 0, 0),   # 青色
+                -1
+            )
 
         return (
             True,
