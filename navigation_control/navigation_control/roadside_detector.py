@@ -11,7 +11,7 @@ class RoadsideDetector(Node):
 
         # True: PNG画像を使用
         # False: カメラを使用
-        self.use_test_image = True
+        self.use_test_image = False
         self.test_image_path = "/home/ubuntu/ros2_ws/src/navigation_control/navigation_control/test/test1.png"
 
         if not self.use_test_image:
@@ -28,6 +28,12 @@ class RoadsideDetector(Node):
         self.detected = False
         self.distance = 0.0
         self.angle = 0.0
+
+        # caribrate parameter
+        self.DIM=(1504, 1504)
+        self.K=np.array([[467.94972918063576, 0.0, 751.230452623187], [0.0, 468.05613091465483, 750.9019494139914], [0.0, 0.0, 1.0]])
+        self.D=np.array([[-0.014641575667383097], [-0.010755035156452033], [0.003932361337988872], [-0.0007419693374374312]])
+        self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K, self.DIM, cv2.CV_16SC2)
     
     def timer_callback(self):
         #############################################
@@ -46,6 +52,10 @@ class RoadsideDetector(Node):
             if not ret:
                 self.get_logger().warn("Camera Error")
                 return
+        
+        front = frame[:, :1504]
+        rear = frame[:, 1504:]
+        frame = self.undistort_image(front)
 
         roi, mask = self.preprocess_image(frame)
 
@@ -244,6 +254,24 @@ class RoadsideDetector(Node):
         )
 
         return roi, mask
+
+    def undistort_image(self, frame):
+        """
+        Fish-eye画像を歪み補正する
+        """
+
+        if frame.shape[1::-1] != self.DIM:
+            frame = cv2.resize(frame, self.DIM)
+
+        undistorted = cv2.remap(
+            frame,
+            self.map1,
+            self.map2,
+            interpolation=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT
+        )
+
+        return undistorted
 
     def extract_boundary_points(self, mask, roi):
         """
