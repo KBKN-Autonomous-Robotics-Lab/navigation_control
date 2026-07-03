@@ -11,7 +11,7 @@ class RoadsideDetector(Node):
 
         # True: PNG画像を使用
         # False: カメラを使用
-        self.use_test_image = False
+        self.use_test_image = True
         self.test_image_path = "/home/ubuntu/ros2_ws/src/navigation_control/navigation_control/test/test1.png"
 
         if not self.use_test_image:
@@ -49,13 +49,12 @@ class RoadsideDetector(Node):
 
         else:
             ret, frame = self.cap.read()
+            front = frame[:, :1504]
+            rear = frame[:, 1504:]
+            frame = self.undistort_image(front)
             if not ret:
                 self.get_logger().warn("Camera Error")
                 return
-        
-        front = frame[:, :1504]
-        rear = frame[:, 1504:]
-        frame = self.undistort_image(front)
 
         roi, mask = self.preprocess_image(frame)
 
@@ -416,9 +415,23 @@ class RoadsideDetector(Node):
 
         y_bottom = roi.shape[0] - 1
 
+        #############################################
+        # Lookahead位置
+        #############################################
+
+        lookahead_pixel = 180     # 150～250くらいで調整
+
+        y_predict = max(0, y_bottom - lookahead_pixel)
+
         x_bottom = (
             coef[0] * y_bottom**2
             + coef[1] * y_bottom
+            + coef[2]
+        )
+
+        x_predict = (
+            coef[0] * y_predict**2
+            + coef[1] * y_predict
             + coef[2]
         )
 
@@ -436,6 +449,7 @@ class RoadsideDetector(Node):
         )
 
         boundary_angle = np.arctan(dxdy)
+        #boundary_angle = np.arctan2(1.0, dxdy)
 
         #############################################
         # 境界までの距離(pixel)
@@ -444,6 +458,13 @@ class RoadsideDetector(Node):
         image_center = roi.shape[1] / 2
 
         distance_pixel = image_center - x_bottom
+
+        predict_pixel = image_center - x_predict
+
+        predict_distance = (
+            predict_pixel
+            * self.pixel_to_meter
+        )
 
         boundary_distance = (
             distance_pixel
@@ -496,6 +517,14 @@ class RoadsideDetector(Node):
             -1
         )
 
+        cv2.circle(
+            roi,
+            (int(x_predict), int(y_predict)),
+            8,
+            (255,0,255),
+            -1
+        )
+
         #############################################
 
         ys_draw = np.arange(int(min(ys)), roi.shape[0])
@@ -514,7 +543,7 @@ class RoadsideDetector(Node):
 
         return (
             True,
-            boundary_distance,
+            predict_distance,
             boundary_angle,
             x_bottom,
             coef
