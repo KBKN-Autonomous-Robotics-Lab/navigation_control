@@ -11,11 +11,13 @@ class RoadsideDetector(Node):
 
         # True: PNG画像を使用
         # False: カメラを使用
-        self.use_test_image = True
+        self.use_test_image = False
         self.test_image_path = "/home/ubuntu/ros2_ws/src/navigation_control/navigation_control/test/test1.png"
 
         if not self.use_test_image:
             self.cap = cv2.VideoCapture("/dev/sensors/webcam")
+            #self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3008)
+            #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1504)
         
         # publisher
         self.roadside_pub = self.create_publisher(RoadsideInfo, "/roadside_info", 10)
@@ -24,15 +26,20 @@ class RoadsideDetector(Node):
         self.timer = self.create_timer(0.05, self.timer_callback)
 
         # parameter
-        self.pixel_to_meter = 0.002
+        #self.pixel_to_meter = 0.00075 # 1504*1504
+        self.pixel_to_meter = 0.0015 # 736*736
         self.detected = False
         self.distance = 0.0
         self.angle = 0.0
 
         # caribrate parameter
-        self.DIM=(1504, 1504)
-        self.K=np.array([[467.94972918063576, 0.0, 751.230452623187], [0.0, 468.05613091465483, 750.9019494139914], [0.0, 0.0, 1.0]])
-        self.D=np.array([[-0.014641575667383097], [-0.010755035156452033], [0.003932361337988872], [-0.0007419693374374312]])
+        #self.DIM=(1504, 1504)
+        #self.K=np.array([[467.94972918063576, 0.0, 751.230452623187], [0.0, 468.05613091465483, 750.9019494139914], [0.0, 0.0, 1.0]])
+        #self.D=np.array([[-0.014641575667383097], [-0.010755035156452033], [0.003932361337988872], [-0.0007419693374374312]])
+        #self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K, self.DIM, cv2.CV_16SC2)
+        self.DIM=(736, 736)
+        self.K=np.array([[230.42134889608045, 0.0, 366.90152469610496], [0.0, 230.45799046281923, 367.1826387781316], [0.0, 0.0, 1.0]])
+        self.D=np.array([[-0.02057316569139076], [0.0027174786060516474], [-0.0033945666290717286], [0.0005725592135935245]])
         self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K, self.DIM, cv2.CV_16SC2)
     
     def timer_callback(self):
@@ -49,8 +56,13 @@ class RoadsideDetector(Node):
 
         else:
             ret, frame = self.cap.read()
-            front = frame[:, :1504]
-            rear = frame[:, 1504:]
+            #print(frame.shape)
+            front = frame[:, :736]
+            rear = frame[:, 736:]
+            #print(frame.shape)
+            #print(front.shape)
+            #cv2.imshow("Frame", frame)
+            cv2.imshow("front", front)
             frame = self.undistort_image(front)
             if not ret:
                 self.get_logger().warn("Camera Error")
@@ -148,9 +160,17 @@ class RoadsideDetector(Node):
         #############################################
         # Debug View
         #############################################
+        display = cv2.resize(
+            roi,
+            None,
+            fx=1.0,
+            fy=1.0,
+            interpolation=cv2.INTER_AREA
+        )
 
-        cv2.imshow("Mask", mask)
-        cv2.imshow("Roadside", roi)
+        cv2.imshow("Roadside", display)
+        #cv2.imshow("Mask", mask)
+        #cv2.imshow("Roadside", roi)
 
         cv2.waitKey(1)
     
@@ -176,14 +196,15 @@ class RoadsideDetector(Node):
         # ROI
         #############################################
         h, w = frame.shape[:2]
-        front = frame[:, :w//2]
+        #front = frame[:, :w//2]
         #front = frame[:, w//2:]
-        h, w = front.shape[:2]
+        #h, w = front.shape[:2]
         #cv2.imshow("Front", front)
         #cv2.imshow("Frame", frame)
         print(f"width = {w}, height = {h}")
 
-        roi = front[int(h * 0.55):h, :]
+        #roi = frame[int(h * 0.01):h, :]
+        roi = frame[:int(h * 0.8), :]
 
         #############################################
         # HSV
