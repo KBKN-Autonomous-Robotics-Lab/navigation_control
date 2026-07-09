@@ -164,8 +164,8 @@ class StopLineDetector(Node):
     def preprocess_image(self, frame):
 
         h,w = frame.shape[:2]
-
-        roi = frame[:int(h*0.8), :]
+        roi = frame[int(h * 0.3):h, :]
+        #roi = frame[:int(h*0.8), :]
 
         hsv = cv2.cvtColor(
             roi,
