@@ -30,12 +30,13 @@ class GPSWaypointManager(Node):
         self.declare_parameter('Position_magnification', 1.675)
         self.Position_magnification = self.get_parameter('Position_magnification').get_parameter_value().double_value
 
-        self.init_lat = 36.04974095972727
+        self.init_lat = 36.049743 # 36.049743,140.0461064 tukuba2026 start
 
-        self.init_lon = 140.04593633886364
-        self.init_theta = 93.0
+
+        self.init_lon = 140.0461064
+        self.init_theta = 0.0
         
-        self.declare_parameter('waypoint_path', 'kbkn_maps/waypoints/tsukuba/2025/papa/tsukuba_waypoint.yaml')
+        self.declare_parameter('waypoint_path', 'kbkn_maps/waypoints/tsukuba/2026/tsukuba_waypoint.yaml')
         waypoint_path = self.get_parameter('waypoint_path').get_parameter_value().string_value
         
         # Waypoint YAMLファイルを読み込む
