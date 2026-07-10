@@ -133,16 +133,6 @@ class StopLineDetector(Node):
                 -1
             )
 
-            cv2.putText(
-                roi,
-                "STOP LINE",
-                (20,40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0,255,255),
-                2
-            )
-
         #############################################
         # Publish
         #############################################
@@ -176,8 +166,8 @@ class StopLineDetector(Node):
         # White extraction
         #############################################
 
-        lower = np.array([0,0,180])
-        upper = np.array([180,40,255])
+        lower = np.array([0,0,210])
+        upper = np.array([180,25,255])
 
         mask = cv2.inRange(
             hsv,
@@ -187,7 +177,7 @@ class StopLineDetector(Node):
 
         #############################################
 
-        kernel = np.ones((5,5),np.uint8)
+        kernel = np.ones((9,9),np.uint8)
 
         mask = cv2.morphologyEx(
             mask,
@@ -222,7 +212,8 @@ class StopLineDetector(Node):
         for contour in contours:
 
             area = cv2.contourArea(contour)
-
+            print(area)
+            #mennseki
             if area < 1000:
                 continue
 
@@ -232,15 +223,16 @@ class StopLineDetector(Node):
 
             long_side = max(w,h)
             short_side = min(w,h)
-
+            print(long_side)
+            print(short_side)
             #########################################
             # Stop line condition
             #########################################
-
+        
             if long_side < 250:
                 continue
 
-            if short_side > 50:
+            if short_side > 70:
                 continue
 
             return True, contour
