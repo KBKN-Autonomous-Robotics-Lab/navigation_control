@@ -51,6 +51,7 @@ setup(
         'take_picture = navigation_control.take_picture:main',
         'roadside_detector = navigation_control.roadside_detector:main',
         'stop_line = navigation_control.stop_line:main',
+        'braille_block = navigation_control.braille_block:main',
         ],
     },
 )
