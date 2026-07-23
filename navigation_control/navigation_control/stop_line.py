@@ -89,6 +89,7 @@ class StopLineDetector(Node):
 
             frame = frame[:, :736]
             frame = self.undistort_image(frame)
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         #############################################
 
@@ -154,8 +155,8 @@ class StopLineDetector(Node):
     def preprocess_image(self, frame):
 
         h,w = frame.shape[:2]
-        roi = frame[int(h * 0.3):h, :]
-        #roi = frame[:int(h*0.8), :]
+        #roi = frame[int(h * 0.3):h, :]
+        roi = frame[:int(h*0.7), :]
 
         hsv = cv2.cvtColor(
             roi,
@@ -166,7 +167,7 @@ class StopLineDetector(Node):
         # White extraction
         #############################################
 
-        lower = np.array([0,0,210])
+        lower = np.array([0,0,200])
         upper = np.array([180,25,255])
 
         mask = cv2.inRange(

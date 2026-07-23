@@ -67,6 +67,7 @@ class RoadsideDetector(Node):
             if not ret:
                 self.get_logger().warn("Camera Error")
                 return
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         roi, mask = self.preprocess_image(frame)
 
@@ -204,7 +205,7 @@ class RoadsideDetector(Node):
         print(f"width = {w}, height = {h}")
 
         #roi = frame[int(h * 0.01):h, :]
-        roi = frame[:int(h * 0.8), :]
+        roi = frame[:int(h * 0.64), :]
 
         #############################################
         # HSV
