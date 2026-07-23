@@ -52,6 +52,7 @@ setup(
         'roadside_detector = navigation_control.roadside_detector:main',
         'stop_line = navigation_control.stop_line:main',
         'braille_block = navigation_control.braille_block:main',
+        'tsukuba_camera_control = navigation_control.tsukuba_camera_control:main',
         ],
     },
 )
