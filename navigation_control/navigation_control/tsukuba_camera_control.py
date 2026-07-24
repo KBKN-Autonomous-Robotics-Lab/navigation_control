@@ -12,7 +12,7 @@ class TsukubaController(Node):
 
         # True: PNG画像を使用
         # False: カメラを使用
-        self.use_test_image = False
+        self.use_test_image = True
         self.test_image_path = "/home/ubuntu/ros2_ws/src/navigation_control/navigation_control/test/test1.png"
 
         if not self.use_test_image:
@@ -44,6 +44,11 @@ class TsukubaController(Node):
         self.K=np.array([[230.42134889608045, 0.0, 366.90152469610496], [0.0, 230.45799046281923, 367.1826387781316], [0.0, 0.0, 1.0]])
         self.D=np.array([[-0.02057316569139076], [0.0027174786060516474], [-0.0033945666290717286], [0.0005725592135935245]])
         self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K, self.DIM, cv2.CV_16SC2)
+
+        cv2.namedWindow("test")
+        cv2.setMouseCallback("test", self.mouse_callback)
+        self.mouse_x = 0
+        self.mouse_y = 0
     
     def timer_callback(self):
         frame = self.get_camera_image()
@@ -69,6 +74,12 @@ class TsukubaController(Node):
             frame = self.undistort_image(frame)
             frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         return frame
+    
+    def mouse_callback(self, event, x, y, flags, param):
+        self.mouse_x = x
+        self.mouse_y = y
+        if event == cv2.EVENT_LBUTTONDOWN:
+            print(f"CLICK : ({x},{y})")
     
     def detect_roadside(self, frame):
         roi, mask = self.preprocess_roadside(frame)
@@ -143,6 +154,24 @@ class TsukubaController(Node):
         msg.boundary_distance = float(boundary_distance)
         msg.boundary_angle = float(boundary_angle)
         self.roadside_pub.publish(msg)
+
+        cv2.circle(
+            roi,
+            (self.mouse_x, self.mouse_y),
+            5,
+            (0,0,255),
+            -1
+        )
+
+        cv2.putText(
+            roi,
+            f"({self.mouse_x},{self.mouse_y})",
+            (10, roi.shape[0]-10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (255,255,255),
+            2
+        )
 
         cv2.imshow("Roadside", roi)
     
