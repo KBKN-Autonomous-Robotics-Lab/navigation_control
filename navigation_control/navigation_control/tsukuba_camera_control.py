@@ -12,7 +12,7 @@ class TsukubaController(Node):
 
         # True: PNG画像を使用
         # False: カメラを使用
-        self.use_test_image = True
+        self.use_test_image = False
         self.test_image_path = "/home/ubuntu/ros2_ws/src/navigation_control/navigation_control/test/test1.png"
 
         if not self.use_test_image:
@@ -49,6 +49,96 @@ class TsukubaController(Node):
         cv2.setMouseCallback("test", self.mouse_callback)
         self.mouse_x = 0
         self.mouse_y = 0
+
+        img_pts = np.array([
+            [358,337],
+            [361,279],
+            [358,230],
+            [364,149],
+            [363,87],
+            [364,34],
+
+            [0,223],
+            [115,224],
+            [232,225],
+            [349,227],
+            [461,230],
+            [580,240],
+
+            [0,325],
+            [100,324],
+            [224,330],
+            [356,334],
+            [492,334],
+            [624,338],
+
+            [50,142],
+            [153,149],
+            [255,150],
+            [360,155],
+            [459,154],
+            [570,153],
+
+            [92,76],
+            [176,77],
+            [269,79],
+            [362,82],
+            [455,86],
+            [542,82],
+
+            [115,28],
+            [196,29],
+            [276,34],
+            [364,31],
+            [442,32],
+            [516,31]
+        ], dtype=np.float32)
+
+        world_pts = np.array([
+            [0,30],
+            [0,45],
+            [0,61],
+            [0,90],
+            [0,120],
+            [0,150],
+
+            [-90,60],
+            [-60,60],
+            [-30,60],
+            [0,60],
+            [30,60],
+            [60,60],
+
+            [-90,30],
+            [-60,30],
+            [-30,30],
+            [0,30],
+            [30,30],
+            [60,30],
+
+            [-90,90],
+            [-60,90],
+            [-30,90],
+            [0,90],
+            [30,90],
+            [60,90],
+
+            [-90,120],
+            [-60,120],
+            [-30,120],
+            [0,120],
+            [30,120],
+            [60,120],
+
+            [-90,150],
+            [-60,150],
+            [-30,150],
+            [0,150],
+            [30,150],
+            [60,150]
+        ], dtype=np.float32)
+
+        self.H, mask = cv2.findHomography(img_pts, world_pts, cv2.RANSAC)
     
     def timer_callback(self):
         frame = self.get_camera_image()
@@ -666,17 +756,18 @@ class TsukubaController(Node):
         distance_pixel = image_center - x_bottom
 
         predict_pixel = image_center - x_predict
-
+        boundary_distance, forward_distance = self.image_to_world(x_predict, y_predict)
+        '''
         predict_distance = (
             predict_pixel
             * self.pixel_to_meter
         )
-
+        
         boundary_distance = (
             distance_pixel
             * self.pixel_to_meter
         )
-
+        '''
         #############################################
         # デバッグ描画
         #############################################
@@ -749,7 +840,7 @@ class TsukubaController(Node):
 
         return (
             True,
-            predict_distance,
+            boundary_distance,
             boundary_angle,
             x_bottom,
             coef
@@ -821,6 +912,11 @@ class TsukubaController(Node):
             return True, contour
 
         return False, None
+    
+    def image_to_world(self, x, y):
+        p = np.array([[[x, y]]], dtype=np.float32)
+        world = cv2.perspectiveTransform(p, self.H)
+        return world[0,0,0] / 100.0, world[0,0,1] / 100.0
 
 def main():
     rclpy.init()
