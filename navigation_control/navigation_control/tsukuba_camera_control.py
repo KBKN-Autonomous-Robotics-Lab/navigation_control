@@ -45,8 +45,9 @@ class TsukubaController(Node):
         self.D=np.array([[-0.02057316569139076], [0.0027174786060516474], [-0.0033945666290717286], [0.0005725592135935245]])
         self.map1, self.map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K, self.DIM, cv2.CV_16SC2)
 
-        cv2.namedWindow("test")
-        cv2.setMouseCallback("test", self.mouse_callback)
+        # image
+        #cv2.namedWindow("test")
+        #cv2.setMouseCallback("test", self.mouse_callback)
         self.mouse_x = 0
         self.mouse_y = 0
 
@@ -263,6 +264,7 @@ class TsukubaController(Node):
             2
         )
 
+        # show image
         cv2.imshow("Roadside", roi)
     
     def detect_stop_line(self, frame):
@@ -306,6 +308,7 @@ class TsukubaController(Node):
         msg.data = detected
         self.stop_pub.publish(msg)
 
+        # show image
         cv2.imshow("StopMask",mask)
         cv2.imshow("StopLine",roi)
     
@@ -350,6 +353,7 @@ class TsukubaController(Node):
         msg.data = detected
         self.braille_block_pub.publish(msg)
 
+        # show image
         cv2.imshow("braille_block Mask",mask)
         cv2.imshow("braille_block",roi)
     
@@ -457,8 +461,8 @@ class TsukubaController(Node):
     def preprocess_stopline(self, frame):
 
         h,w = frame.shape[:2]
-        #roi = frame[int(h * 0.3):h, :]
-        roi = frame[:int(h*0.7), :]
+        roi = frame[int(h * 0.3):h, :]
+        #roi = frame[:int(h*0.7), :]
 
         hsv = cv2.cvtColor(
             roi,
@@ -469,7 +473,7 @@ class TsukubaController(Node):
         # White extraction
         #############################################
 
-        lower = np.array([0,0,200])
+        lower = np.array([0,0,180])
         upper = np.array([180,25,255])
 
         mask = cv2.inRange(
@@ -877,7 +881,7 @@ class TsukubaController(Node):
             if long_side < 250:
                 continue
 
-            if short_side > 70:
+            if short_side > 60:
                 continue
 
             return True, contour
