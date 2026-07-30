@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 import cv2
 import numpy as np
 from my_msgs.msg import RoadsideInfo
+import nav_msgs.msg as nav_msgs
 
 class TsukubaController(Node):
     def __init__(self):
@@ -20,6 +21,9 @@ class TsukubaController(Node):
             #self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3008)
             #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1504)
         
+        # subscriber
+        self.odom_sub = self.create_subscription(nav_msgs.Odometry,'/fusion/odom', self.get_odom, 1)
+        
         # publisher
         self.roadside_pub = self.create_publisher(RoadsideInfo, "/roadside_info", 10)
         self.stop_pub = self.create_publisher(Bool, "/stop_line", 10)
@@ -34,6 +38,22 @@ class TsukubaController(Node):
         self.detected = False
         self.distance = 0.0
         self.angle = 0.0
+
+        #positon init odom
+        self.position_x = 0.0 #[m]
+        self.position_y = 0.0 #[m]
+        self.position_z = 0.0 #[m]
+        self.theta_x = 0.0 #[deg]
+        self.theta_y = 0.0 #[deg]
+        self.theta_z = 0.0 #[deg]
+        self.yaw = 0.0
+        self.orientation_z = 0.0
+        self.orientation_w = 0.0
+
+        # position init stop line
+        self.stop_line_registered = False
+        self.stop_line_x = 0.0
+        self.stop_line_y = 0.0
 
         # caribrate parameter
         #self.DIM=(1504, 1504)
@@ -52,48 +72,12 @@ class TsukubaController(Node):
         self.mouse_y = 0
 
         img_pts = np.array([
-            [358,337],
-            [361,279],
-            [358,230],
-            [364,149],
-            [363,87],
-            [364,34],
-
-            [0,223],
-            [115,224],
-            [232,225],
-            [349,227],
-            [461,230],
-            [580,240],
-
-            [0,325],
-            [100,324],
-            [224,330],
-            [356,334],
-            [492,334],
-            [624,338],
-
-            [50,142],
-            [153,149],
-            [255,150],
-            [360,155],
-            [459,154],
-            [570,153],
-
-            [92,76],
-            [176,77],
-            [269,79],
-            [362,82],
-            [455,86],
-            [542,82],
-
-            [115,28],
-            [196,29],
-            [276,34],
-            [364,31],
-            [442,32],
-            [516,31]
-        ], dtype=np.float32)
+            [358,337], [361,279], [358,230], [364,149], [363, 87], [364, 34],
+            [  0,223], [115,224], [232,225], [349,227], [461,230], [580,240],
+            [  0,325], [100,324], [224,330], [356,334], [492,334], [624,338],
+            [ 50,142], [153,149], [255,150], [360,155], [459,154], [570,153],
+            [ 92, 76], [176, 77], [269, 79], [362, 82], [455, 86], [542, 82],
+            [115, 28], [196, 29], [276, 34], [364, 31], [442, 32], [516, 31]], dtype=np.float32)
 
         world_pts = np.array([
             [0,30],
@@ -149,6 +133,24 @@ class TsukubaController(Node):
         self.detect_stop_line(frame)
         self.detect_braille_block(frame)
         cv2.waitKey(1)
+    
+    def get_odom(self, msg):
+        self.position_x = msg.pose.pose.position.x
+        self.position_y = msg.pose.pose.position.y
+        self.position_z = msg.pose.pose.position.z
+        
+        flio_q_x = msg.pose.pose.orientation.x
+        flio_q_y = msg.pose.pose.orientation.y
+        flio_q_z = msg.pose.pose.orientation.z
+        flio_q_w = msg.pose.pose.orientation.w
+        roll, pitch, yaw = quaternion_to_euler(flio_q_x, flio_q_y, flio_q_z, flio_q_w)
+        
+        self.theta_x = 0 #roll /math.pi*180
+        self.theta_y = 0 #pitch /math.pi*180
+        self.theta_z = yaw /math.pi*180
+        self.yaw = yaw
+        self.orientation_z = flio_q_z
+        self.orientation_w = flio_q_w
     
     def get_camera_image(self):
         if self.use_test_image:
@@ -269,43 +271,39 @@ class TsukubaController(Node):
     
     def detect_stop_line(self, frame):
         roi, mask = self.preprocess_stopline(frame)
-        detected, contour = self.extract_stop_line(mask)
+        detected, contour, cx, cy = self.extract_stop_line(mask)
+        stop_line = False
 
         #############################################
         # Debug
         #############################################
         if detected:
-            cv2.drawContours(
-                roi,
-                [contour],
-                -1,
-                (0,255,0),
-                3
-            )
-            rect = cv2.minAreaRect(contour)
-            box = cv2.boxPoints(rect)
-            box = np.int32(box)
-            cv2.drawContours(
-                roi,
-                [box],
-                0,
-                (255,0,0),
-                2
-            )
-            (cx,cy),(w,h),angle = rect
-            cv2.circle(
-                roi,
-                (int(cx),int(cy)),
-                5,
-                (0,0,255),
-                -1
-            )
+            cv2.drawContours(roi, [contour], -1, (0,255,0), 3)
+            #rect = cv2.minAreaRect(contour)
+            #box = cv2.boxPoints(rect)
+            #box = np.int32(box)
+            #cv2.drawContours(roi, [box], 0, (255,0,0), 2)
+            dx, dy = self.image_to_world(cx, cy)
+            cv2.circle(roi, (int(cx),int(cy)), 5, (0,0,255), -1)
+            yaw = self.yaw
+            self.stop_line_x = (self.position_x + dx * np.cos(yaw) - dy * np.sin(yaw))
+            self.stop_line_y = (self.position_y + dx * np.sin(yaw) + dy * np.cos(yaw))
+            self.stop_line_registered = True
+            self.get_logger().info(f"Stop line registered : ({self.stop_line_x:.2f}, {self.stop_line_y:.2f})")
+        
+        if self.stop_line_registered:
+            distance = np.hypot(self.stop_line_x - self.position_x, self.stop_line_y - self.position_y)
+            self.get_logger().info(f"Stop line distance : ({distance:.2f})")
+            if distance < 0.5: # 50cm
+                stop_line = True
+                self.stop_line_registered = False
+            cv2.putText(roi, f"{distance:.2f} m", (20,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 2)
         
         #############################################
         # Publish
         #############################################
         msg = Bool()
-        msg.data = detected
+        msg.data = stop_line
         self.stop_pub.publish(msg)
 
         # show image
@@ -558,49 +556,33 @@ class TsukubaController(Node):
         """
         Fish-eye画像を歪み補正する
         """
-
         if frame.shape[1::-1] != self.DIM:
             frame = cv2.resize(frame, self.DIM)
 
-        undistorted = cv2.remap(
-            frame,
-            self.map1,
-            self.map2,
-            interpolation=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_CONSTANT
-        )
+        undistorted = cv2.remap(frame, self.map1, self.map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
 
         return undistorted
 
     def extract_boundary_points(self, mask, roi):
         """
         HSVマスクから車道側境界点を抽出する
-
         Parameters
         ----------
         mask : np.ndarray
             HSV二値画像
-
         Returns
         -------
         success : bool
             境界抽出できたか
-
         xs : np.ndarray
             境界点x座標
-
         ys : np.ndarray
             境界点y座標
-
         contour : np.ndarray
             最大輪郭（デバッグ用）
         """
 
-        contours, _ = cv2.findContours(
-            mask,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_NONE
-        )
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         if len(contours) == 0:
             return False, None, None, None
@@ -614,11 +596,9 @@ class TsukubaController(Node):
 
         # ROI下40%
         y_min = int(height * 0.6)
-
         boundary_points = {}
 
         for p in contour:
-
             x = int(p[0][0])
             y = int(p[0][1])
 
@@ -628,112 +608,64 @@ class TsukubaController(Node):
             ####################################################
             # 左側路側帯なら車道側境界は「右端」
             ####################################################
-
             if y not in boundary_points:
-
                 boundary_points[y] = x
-
             else:
-
-                boundary_points[y] = min(
-                    boundary_points[y],
-                    x
-                )
+                boundary_points[y] = min( boundary_points[y], x)
 
         if len(boundary_points) < 20:
             return False, None, None, None
 
-        ys = np.array(
-            sorted(boundary_points.keys()),
-            dtype=np.float32
-        )
-
-        xs = np.array(
-            [boundary_points[y] for y in ys],
-            dtype=np.float32
-        )
+        ys = np.array(sorted(boundary_points.keys()), dtype=np.float32)
+        xs = np.array([boundary_points[y] for y in ys], dtype=np.float32)
         # 境界点を描画
         for x, y in zip(xs, ys):
-            cv2.circle(
-                roi,
-                (int(x), int(y)),
-                2,
-                (0, 0, 255),   # 赤色
-                -1
-            )
-
+            cv2.circle(roi, (int(x), int(y)), 2, (0, 0, 255), -1)
         return True, xs, ys, contour
     
     def fit_boundary_curve(self, xs, ys, roi):
         """
         境界点を2次多項式で近似する
-
         Parameters
         ----------
         xs : np.ndarray
             境界点x座標
-
         ys : np.ndarray
             境界点y座標
-
         roi : np.ndarray
             デバッグ描画用
-
         Returns
         -------
         success : bool
-
         boundary_distance : float
-
         boundary_angle : float
-
         x_bottom : float
-
         coef : np.ndarray
         """
 
         #############################################
         # 点数不足
         #############################################
-
         if len(xs) < 20:
             return False, 0.0, 0.0, 0.0, None
 
         #############################################
         # 2次近似
         #############################################
-
-        coef = np.polyfit(
-            ys,
-            xs,
-            2
-        )
+        coef = np.polyfit( ys, xs, 2)
 
         #############################################
         # 画像下端
         #############################################
-
         y_bottom = roi.shape[0] - 1
 
         #############################################
         # Lookahead位置
         #############################################
-
         lookahead_pixel = 180     # 150～250くらいで調整
-
         y_predict = max(0, y_bottom - lookahead_pixel)
-
-        x_bottom = (
-            coef[0] * y_bottom**2
-            + coef[1] * y_bottom
-            + coef[2]
-        )
-
-        x_predict = (
-            coef[0] * y_predict**2
-            + coef[1] * y_predict
-            + coef[2]
-        )
+        x_bottom = (coef[0] * y_bottom**2 + coef[1] * y_bottom + coef[2])
+        x_predict = (coef[0] * y_predict**2 + coef[1] * y_predict + coef[2])
 
         #############################################
         # 接線
@@ -742,23 +674,15 @@ class TsukubaController(Node):
         #
         # dx/dy = 2ay+b
         #############################################
-
-        dxdy = (
-            2.0 * coef[0] * y_bottom
-            + coef[1]
-        )
-
+        dxdy = (2.0 * coef[0] * y_bottom + coef[1])
         boundary_angle = np.arctan(dxdy)
         #boundary_angle = np.arctan2(1.0, dxdy)
 
         #############################################
         # 境界までの距離(pixel)
         #############################################
-
         image_center = roi.shape[1] / 2
-
         distance_pixel = image_center - x_bottom
-
         predict_pixel = image_center - x_predict
         boundary_distance, forward_distance = self.image_to_world(x_predict, y_predict)
         '''
@@ -775,91 +699,33 @@ class TsukubaController(Node):
         #############################################
         # デバッグ描画
         #############################################
-
         curve = []
 
         for y in range(int(min(ys)), int(max(ys))):
-
-            x = (
-                coef[0] * y**2
-                + coef[1] * y
-                + coef[2]
-            )
-
-            curve.append(
-                (
-                    int(x),
-                    int(y)
-                )
-            )
+            x = (coef[0] * y**2 + coef[1] * y + coef[2])
+            curve.append((int(x), int(y)))
 
         for i in range(len(curve)-1):
-
-            cv2.line(
-                roi,
-                curve[i],
-                curve[i+1],
-                (0,255,255),
-                2
-            )
+            cv2.line(roi, curve[i], curve[i+1], (0,255,255), 2)
 
         #############################################
         # 下端位置
         #############################################
-
-        cv2.circle(
-            roi,
-            (
-                int(x_bottom),
-                int(y_bottom)
-            ),
-            6,
-            (0,0,255),
-            -1
-        )
-
-        cv2.circle(
-            roi,
-            (int(x_predict), int(y_predict)),
-            8,
-            (255,0,255),
-            -1
-        )
+        cv2.circle(roi, (int(x_bottom), int(y_bottom)), 6, (0,0,255), -1)
+        cv2.circle(roi, (int(x_predict), int(y_predict)), 8, (255,0,255), -1)
 
         #############################################
-
         ys_draw = np.arange(int(min(ys)), roi.shape[0])
-
         xs_draw = np.polyval(coef, ys_draw)
 
         for x, y in zip(xs_draw, ys_draw):
+            cv2.circle(roi, (int(x), int(y)), 1, (255, 0, 0), -1)
 
-            cv2.circle(
-                roi,
-                (int(x), int(y)),
-                1,
-                (255, 0, 0),   # 青色
-                -1
-            )
-
-        return (
-            True,
-            boundary_distance,
-            boundary_angle,
-            x_bottom,
-            coef
-        )
+        return (True, boundary_distance, boundary_angle, x_bottom, coef)
     
     def extract_stop_line(self, mask):
-
-        contours,_ = cv2.findContours(
-            mask,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
-
+        contours,_ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-
             area = cv2.contourArea(contour)
             print(area)
             #mennseki
@@ -867,36 +733,28 @@ class TsukubaController(Node):
                 continue
 
             rect = cv2.minAreaRect(contour)
-
-            (_, _), (w,h), angle = rect
-
+            (cx, cy), (w,h), angle = rect
             long_side = max(w,h)
             short_side = min(w,h)
             print(long_side)
             print(short_side)
+
             #########################################
             # Stop line condition
             #########################################
-        
             if long_side < 250:
                 continue
 
             if short_side > 60:
                 continue
 
-            return True, contour
+            return True, contour, cx, cy
 
-        return False, None
+        return False, None, None, None
         
     def extract_braille_block(self, mask):
-        contours,_ = cv2.findContours(
-            mask,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
-
+        contours,_ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-
             area = cv2.contourArea(contour)
             print(area)
             #mennseki
@@ -904,14 +762,11 @@ class TsukubaController(Node):
                 continue
 
             rect = cv2.minAreaRect(contour)
-
             (_, _), (w,h), angle = rect
-
             long_side = max(w,h)
             short_side = min(w,h)
             print(long_side)
             print(short_side)
-
 
             return True, contour
 
