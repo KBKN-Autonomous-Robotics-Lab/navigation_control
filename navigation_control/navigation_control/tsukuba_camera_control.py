@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from my_msgs.msg import RoadsideInfo
 import nav_msgs.msg as nav_msgs
+import math
 
 class TsukubaController(Node):
     def __init__(self):
@@ -22,7 +23,7 @@ class TsukubaController(Node):
             #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1504)
         
         # subscriber
-        self.odom_sub = self.create_subscription(nav_msgs.Odometry,'/fusion/odom', self.get_odom, 1)
+        self.odom_sub = self.create_subscription(nav_msgs.Odometry,'/odom', self.get_odom, 1)
         
         # publisher
         self.roadside_pub = self.create_publisher(RoadsideInfo, "/roadside_info", 10)
@@ -54,6 +55,7 @@ class TsukubaController(Node):
         self.stop_line_registered = False
         self.stop_line_x = 0.0
         self.stop_line_y = 0.0
+        self.distance = 0.0
 
         # caribrate parameter
         #self.DIM=(1504, 1504)
@@ -80,48 +82,12 @@ class TsukubaController(Node):
             [115, 28], [196, 29], [276, 34], [364, 31], [442, 32], [516, 31]], dtype=np.float32)
 
         world_pts = np.array([
-            [0,30],
-            [0,45],
-            [0,61],
-            [0,90],
-            [0,120],
-            [0,150],
-
-            [-90,60],
-            [-60,60],
-            [-30,60],
-            [0,60],
-            [30,60],
-            [60,60],
-
-            [-90,30],
-            [-60,30],
-            [-30,30],
-            [0,30],
-            [30,30],
-            [60,30],
-
-            [-90,90],
-            [-60,90],
-            [-30,90],
-            [0,90],
-            [30,90],
-            [60,90],
-
-            [-90,120],
-            [-60,120],
-            [-30,120],
-            [0,120],
-            [30,120],
-            [60,120],
-
-            [-90,150],
-            [-60,150],
-            [-30,150],
-            [0,150],
-            [30,150],
-            [60,150]
-        ], dtype=np.float32)
+            [  0,30], [  0,45], [  0,61], [0,90], [0,120], [0,150],
+            [-90,60], [-60,60], [-30,60], [0,60], [30,60], [60,60],
+            [-90,30], [-60,30], [-30,30], [0,30], [30,30], [60,30],
+            [-90,90], [-60,90], [-30,90], [0,90], [30,90], [60,90],
+            [-90,120], [-60,120], [-30,120], [0,120], [30,120], [60,120],
+            [-90,150], [-60,150], [-30,150], [0,150], [30,150], [60,150]], dtype=np.float32)
 
         self.H, mask = cv2.findHomography(img_pts, world_pts, cv2.RANSAC)
     
@@ -283,21 +249,26 @@ class TsukubaController(Node):
             #box = cv2.boxPoints(rect)
             #box = np.int32(box)
             #cv2.drawContours(roi, [box], 0, (255,0,0), 2)
-            dx, dy = self.image_to_world(cx, cy)
+            dy, dx = self.image_to_world(cx, cy)
+            self.get_logger().info(f"dx, dy: ({dx:.2f}, {dy:.2f})")
             cv2.circle(roi, (int(cx),int(cy)), 5, (0,0,255), -1)
             yaw = self.yaw
             self.stop_line_x = (self.position_x + dx * np.cos(yaw) - dy * np.sin(yaw))
             self.stop_line_y = (self.position_y + dx * np.sin(yaw) + dy * np.cos(yaw))
             self.stop_line_registered = True
-            self.get_logger().info(f"Stop line registered : ({self.stop_line_x:.2f}, {self.stop_line_y:.2f})")
         
         if self.stop_line_registered:
             distance = np.hypot(self.stop_line_x - self.position_x, self.stop_line_y - self.position_y)
-            self.get_logger().info(f"Stop line distance : ({distance:.2f})")
+            print("culc_distance")
+            self.distance = distance
             if distance < 0.5: # 50cm
                 stop_line = True
                 self.stop_line_registered = False
-            cv2.putText(roi, f"{distance:.2f} m", (20,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 2)
+        
+        cv2.putText(roi, f"{self.distance:.2f} m", (20,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,255), 2)
+        self.get_logger().info(f"Odometry: ({self.position_x:.2f},{self.position_y:.2f})")
+        self.get_logger().info(f"Stop line registered : ({self.stop_line_x:.2f}, {self.stop_line_y:.2f})")
+        self.get_logger().info(f"Stop line distance : ({self.distance:.2f})")
         
         #############################################
         # Publish
@@ -382,7 +353,7 @@ class TsukubaController(Node):
         #h, w = front.shape[:2]
         #cv2.imshow("Front", front)
         #cv2.imshow("Frame", frame)
-        print(f"width = {w}, height = {h}")
+        #print(f"width = {w}, height = {h}")
 
         #roi = frame[int(h * 0.01):h, :]
         roi = frame[:int(h * 0.64), :]
@@ -459,8 +430,10 @@ class TsukubaController(Node):
     def preprocess_stopline(self, frame):
 
         h,w = frame.shape[:2]
-        roi = frame[int(h * 0.3):h, :]
+        #roi = frame[int(h * 0.3):h, :]
         #roi = frame[:int(h*0.7), :]
+        roi = frame[:int(h * 0.64), :]
+        #roi = frame
 
         hsv = cv2.cvtColor(
             roi,
@@ -727,7 +700,7 @@ class TsukubaController(Node):
         contours,_ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             area = cv2.contourArea(contour)
-            print(area)
+            #print(area)
             #mennseki
             if area < 1000:
                 continue
@@ -736,8 +709,8 @@ class TsukubaController(Node):
             (cx, cy), (w,h), angle = rect
             long_side = max(w,h)
             short_side = min(w,h)
-            print(long_side)
-            print(short_side)
+            #print(long_side)
+            #print(short_side)
 
             #########################################
             # Stop line condition
@@ -756,7 +729,7 @@ class TsukubaController(Node):
         contours,_ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             area = cv2.contourArea(contour)
-            print(area)
+            #print(area)
             #mennseki
             if area < 1000:
                 continue
@@ -765,8 +738,8 @@ class TsukubaController(Node):
             (_, _), (w,h), angle = rect
             long_side = max(w,h)
             short_side = min(w,h)
-            print(long_side)
-            print(short_side)
+            #print(long_side)
+            #print(short_side)
 
             return True, contour
 
@@ -776,6 +749,20 @@ class TsukubaController(Node):
         p = np.array([[[x, y]]], dtype=np.float32)
         world = cv2.perspectiveTransform(p, self.H)
         return world[0,0,0] / 100.0, world[0,0,1] / 100.0
+
+def quaternion_to_euler(x, y, z, w):
+    # クォータニオンから回転行列を計算
+    rot_matrix = np.array([
+        [1 - 2 * (y**2 + z**2), 2 * (x*y - z*w), 2 * (x*z + y*w)],
+        [2 * (x*y + z*w), 1 - 2 * (x**2 + z**2), 2 * (y*z - x*w)],
+        [2 * (x*z - y*w), 2 * (y*z + x*w), 1 - 2 * (x**2 + y**2)]
+    ])
+
+    # 回転行列からオイラー角を抽出
+    roll = np.arctan2(rot_matrix[2, 1], rot_matrix[2, 2])
+    pitch = np.arctan2(-rot_matrix[2, 0], np.sqrt(rot_matrix[2, 1]**2 + rot_matrix[2, 2]**2))
+    yaw = np.arctan2(rot_matrix[1, 0], rot_matrix[0, 0])
+    return roll, pitch, yaw
 
 def main():
     rclpy.init()
