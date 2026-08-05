@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32
+from std_msgs.msg import Int32
 from std_msgs.msg import Bool
 import cv2
 import numpy as np
@@ -24,7 +25,7 @@ class TsukubaController(Node):
         
         # subscriber
         self.odom_sub = self.create_subscription(nav_msgs.Odometry,'/odom', self.get_odom, 1)
-        self.waypoint_number_sub = self.create_subscription(Int32,'/waypoint_number', self.get_waypoint_number, qos_profile_sub)
+        self.waypoint_number_sub = self.create_subscription(Int32,'/waypoint_number', self.get_waypoint_number, 10)
         
         # publisher
         self.roadside_pub = self.create_publisher(RoadsideInfo, "/roadside_info", 10)
@@ -94,9 +95,9 @@ class TsukubaController(Node):
         self.H, mask = cv2.findHomography(img_pts, world_pts, cv2.RANSAC)
     
     def timer_callback(self):
-        if 2 <= self.waypoint_number <= 8:
+        if 0 <= self.waypoint_number <= 8:
             mode = "stop_line"
-        elif 38 <= self.waypoint_number <= 40:
+        elif 90 <= self.waypoint_number <= 100:
             mode = "roadside"
         elif 90 <= self.waypoint_number <= 110:
             mode = "braille"
@@ -464,7 +465,7 @@ class TsukubaController(Node):
         #############################################
 
         lower = np.array([0,0,180])
-        upper = np.array([180,25,255])
+        upper = np.array([180,255,255])
 
         mask = cv2.inRange(
             hsv,
