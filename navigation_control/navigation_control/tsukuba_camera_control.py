@@ -24,6 +24,7 @@ class TsukubaController(Node):
         
         # subscriber
         self.odom_sub = self.create_subscription(nav_msgs.Odometry,'/odom', self.get_odom, 1)
+        self.waypoint_number_sub = self.create_subscription(Int32,'/waypoint_number', self.get_waypoint_number, qos_profile_sub)
         
         # publisher
         self.roadside_pub = self.create_publisher(RoadsideInfo, "/roadside_info", 10)
@@ -50,6 +51,7 @@ class TsukubaController(Node):
         self.yaw = 0.0
         self.orientation_z = 0.0
         self.orientation_w = 0.0
+        self.waypoint_number = 0
 
         # position init stop line
         self.stop_line_registered = False
@@ -92,12 +94,25 @@ class TsukubaController(Node):
         self.H, mask = cv2.findHomography(img_pts, world_pts, cv2.RANSAC)
     
     def timer_callback(self):
+        if 2 <= self.waypoint_number <= 8:
+            mode = "stop_line"
+        elif 38 <= self.waypoint_number <= 40:
+            mode = "roadside"
+        elif 90 <= self.waypoint_number <= 110:
+            mode = "braille"
+        else:
+            return
+
         frame = self.get_camera_image()
         if frame is None:
             return
-        self.detect_roadside(frame)
-        self.detect_stop_line(frame)
-        self.detect_braille_block(frame)
+
+        if mode == "stop_line":
+            self.detect_stop_line(frame)
+        elif mode == "roadside":
+            self.detect_roadside(frame)
+        elif mode == "braille":
+            self.detect_braille_block(frame)
         cv2.waitKey(1)
     
     def get_odom(self, msg):
@@ -117,6 +132,10 @@ class TsukubaController(Node):
         self.yaw = yaw
         self.orientation_z = flio_q_z
         self.orientation_w = flio_q_w
+    
+    def get_waypoint_number(self, msg):
+        #get waypoint number
+        self.waypoint_number = msg.data
     
     def get_camera_image(self):
         if self.use_test_image:
